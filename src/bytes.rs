@@ -4,8 +4,8 @@ const BASE64_CHARS: &'static [u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop
 pub struct Bytes(Vec<u8>);
 
 impl Bytes {
-  pub fn new(d: &[u8]) -> Bytes {
-    Bytes(d.to_vec())
+  pub fn new(xs: &[u8]) -> Bytes {
+    Bytes(xs.to_vec())
   }
 
   pub fn from_hex(s: &str) -> Bytes {
