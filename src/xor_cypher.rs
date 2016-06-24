@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use bytes::Bytes;
 
-pub struct XorResult {
+struct XorResult {
   distance: f64,
   result: String,
 }
@@ -9,7 +9,7 @@ pub struct XorResult {
 
 /// Returns the most likely decoding of a single-byte XOR.
 // TODO: do not hard-code FREQ_EN.
-pub fn decode_single_byte(data: &[u8]) -> XorResult {
+fn decode_single_byte(data: &[u8]) -> XorResult {
   let mut best_str = String::new();
   let mut min_dist = ::std::f64::MAX;
   let mut dec_data = data.to_owned();
@@ -85,8 +85,8 @@ fn freq_distance(data: &str, freqs: &[(char, f64)]) -> f64 {
 
 #[cfg(test)]
 mod test {
-  use super::*;
   use ::bytes::Bytes;
+  use super::decode_single_byte;
 
   #[test]
   fn single_byte() {
