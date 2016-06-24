@@ -1,16 +1,26 @@
 use std::collections::{HashMap, HashSet};
 use bytes::Bytes;
 
-pub fn decode_single_byte(b: &Bytes) -> String {
-  let orig_data = b.data();
-  let candidates = single_xor_candidates(&orig_data);
+// TODO: consider returning the used byte too.
+pub fn decode_single_byte(data: &[u8]) -> String {
+  let mut best_str = String::new();
+  let mut min_dist = ::std::f64::MAX;
+  let mut dec_data = data.to_owned();
 
-  // Return the minimum-distance string.
-  candidates
-    .into_iter()
-    .min_by_key(|&(_, ref s)| ImplOrd(freq_distance(s, &FREQ_EN)))
-    .unwrap()
-    .1
+  for key in 0..255 {
+    // Compute the XOR decoding.
+    xor_byte_inplace(data, &mut dec_data, key);
+    // Compute distance.
+    let s = String::from_utf8_lossy(&dec_data);
+    let d = freq_distance(&s, &FREQ_EN);
+    // Update if necessary.
+    if d < min_dist {
+      min_dist = d;
+      best_str = s.to_string();
+    }
+  }
+
+  best_str
 }
 
 /// Returns all possible xor-decodings of ‘data’, keyed by byte.
@@ -24,6 +34,13 @@ fn single_xor_candidates(data: &[u8]) -> Vec<(u8, String)> {
 /// Applies (^ byte) to all the bytes in ‘data’
 fn xor_byte(data: &[u8], byte: u8) -> Vec<u8> {
   data.into_iter().map(|c| c ^ byte).collect()
+}
+
+/// Leaves in ‘dst’ the result of `src ^ byte`.
+fn xor_byte_inplace(src: &[u8], dst: &mut [u8], byte: u8) {
+  for (i, c) in src.into_iter().enumerate() {
+    dst[i] = c ^ byte;
+  }
 }
 
 /// Computes the distance between a string and a table of frequencies.
@@ -84,7 +101,7 @@ mod test {
   #[test]
   fn single_byte() {
     assert_eq!("Cooking MC's like a pound of bacon",
-               decode_single_byte(&Bytes::from_hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")));
+               decode_single_byte(&Bytes::from_hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736").data()));
   }
 
   use super::find_xor_str;
