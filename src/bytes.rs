@@ -82,6 +82,10 @@ impl Bytes {
 
     Bytes(ret)
   }
+
+  pub fn data(&self) -> Vec<u8> {
+    self.0.clone()
+  }
 }
 
 #[cfg(test)]
