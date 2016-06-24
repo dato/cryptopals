@@ -1,14 +1,22 @@
 use std::collections::{HashMap, HashSet};
 use bytes::Bytes;
 
-// TODO: consider returning the used byte too.
-pub fn decode_single_byte(data: &[u8]) -> String {
+pub struct XorResult {
+  distance: f64,
+  result: String,
+}
+
+
+/// Returns the most likely decoding of a single-byte XOR.
+// TODO: do not hard-code FREQ_EN.
+pub fn decode_single_byte(data: &[u8]) -> XorResult {
   let mut best_str = String::new();
   let mut min_dist = ::std::f64::MAX;
   let mut dec_data = data.to_owned();
 
   for key in 0..255 {
-    // Compute the XOR decoding.
+    // Compute the XOR decoding. We use an explicit loop and not map() plus
+    // min() to avoid creating too many String objects.
     xor_byte_inplace(data, &mut dec_data, key);
     // Compute distance.
     let s = String::from_utf8_lossy(&dec_data);
@@ -19,22 +27,21 @@ pub fn decode_single_byte(data: &[u8]) -> String {
       best_str = s.to_string();
     }
   }
-
-  best_str
+  XorResult { distance: min_dist, result: best_str }
 }
 
-/// Returns all possible xor-decodings of ‘data’, keyed by byte.
-fn single_xor_candidates(data: &[u8]) -> Vec<(u8, String)> {
-  (0..255)
-    .map(|byte| (byte,
-                 String::from_utf8_lossy(&xor_byte(data, byte)).to_string()))
-    .collect()
+
+/// Solves https://cryptopals.com/sets/1/challenges/4.
+#[allow(dead_code)]
+fn find_xor_str(hex_strings: &[&str]) -> String {
+  hex_strings
+    .into_iter()
+    .map(|s| decode_single_byte(&Bytes::from_hex(s).data()))
+    .min_by_key(|&XorResult { distance: d, .. }| ImplOrd(d))
+    .unwrap()
+    .result
 }
 
-/// Applies (^ byte) to all the bytes in ‘data’
-fn xor_byte(data: &[u8], byte: u8) -> Vec<u8> {
-  data.into_iter().map(|c| c ^ byte).collect()
-}
 
 /// Leaves in ‘dst’ the result of `src ^ byte`.
 fn xor_byte_inplace(src: &[u8], dst: &mut [u8], byte: u8) {
@@ -42,6 +49,7 @@ fn xor_byte_inplace(src: &[u8], dst: &mut [u8], byte: u8) {
     dst[i] = c ^ byte;
   }
 }
+
 
 /// Computes the distance between a string and a table of frequencies.
 /// TODO: uppercase, spaces, punctuation.
@@ -74,24 +82,6 @@ fn freq_distance(data: &str, freqs: &[(char, f64)]) -> f64 {
   distance.sqrt()
 }
 
-/// Solves https://cryptopals.com/sets/1/challenges/4.
-#[allow(dead_code)]
-fn find_xor_str(hex_strings: &[&str]) -> String {
-  let mut candidates = Vec::new();
-
-  for &s in hex_strings {
-    candidates.extend(
-      single_xor_candidates(&Bytes::from_hex(s).data())
-        .into_iter()
-        .map(|(k, s)| (freq_distance(&s, &FREQ_EN), s, k as char)));
-  }
-
-  candidates
-    .into_iter()
-    .min_by_key(|&(d, _, _)| ImplOrd(d))
-    .unwrap()
-    .1
-}
 
 #[cfg(test)]
 mod test {
@@ -101,7 +91,7 @@ mod test {
   #[test]
   fn single_byte() {
     assert_eq!("Cooking MC's like a pound of bacon",
-               decode_single_byte(&Bytes::from_hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736").data()));
+               decode_single_byte(&Bytes::from_hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736").data()).result);
   }
 
   use super::find_xor_str;
@@ -112,6 +102,7 @@ mod test {
     assert_eq!("Now that the party is jumping\n", find_xor_str(&CHALLENGE_4));
   }
 }
+
 
 const FREQ_EN: [(char, f64); 27] = [
   // From: https://en.wikipedia.org/wiki/Letter_frequency
@@ -143,6 +134,7 @@ const FREQ_EN: [(char, f64); 27] = [
   ('z', 0.00074),
   (' ', 0.13000),  // XXX this is approx but breaks the distribution
 ];
+
 
 /// ImplOrd takes a PartialOrd and coerces it into Ord.
 ///
