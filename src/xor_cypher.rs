@@ -69,7 +69,7 @@ mod test {
   }
 }
 
-static FREQ_EN: [(char, f64); 27] = [
+const FREQ_EN: [(char, f64); 27] = [
   // From: https://en.wikipedia.org/wiki/Letter_frequency
   ('a', 0.08167),
   ('b', 0.01492),
