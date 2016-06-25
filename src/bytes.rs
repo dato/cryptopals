@@ -67,24 +67,27 @@ impl Bytes {
     ret
   }
 
-  pub fn xor(&self, other: &Bytes) -> Bytes {
-    let a = &self.0;
-    let b = &other.0;
-    let mut ret = Vec::new();
-
-    if a.len() != b.len() {
-      panic!("distinct sized Bytes passed to xor()");
+  /// Applies cyclic XOR.
+  pub fn xor_cycle(&mut self, bytes: &[u8]) {
+    for (dst, &byte) in self.0.iter_mut().zip(bytes.into_iter().cycle()) {
+      *dst ^= byte;
     }
+  }
 
-    for (x, y) in a.iter().zip(b) {
-      ret.push(x ^ y)
+  /// Applies XOR against a slice of the same exact size.
+  pub fn xor_bytes(&mut self, bytes: &[u8]) {
+    if self.0.len() != bytes.len() {
+      panic!("wrong size for slice received in xor_bytes()");
     }
-
-    Bytes(ret)
+    self.xor_cycle(bytes);
   }
 
   pub fn data(&self) -> Vec<u8> {
     self.0.clone()
+  }
+
+  pub fn reset(&mut self, other: &Bytes) {
+    (&mut self.0).copy_from_slice(&other.0);
   }
 }
 
@@ -116,8 +119,20 @@ mod test {
   #[test]
   fn xor() {
     // https://cryptopals.com/sets/1/challenges/2
-    assert_eq!(Bytes::from_hex("1c0111001f010100061a024b53535009181c")
-               .xor(&Bytes::from_hex("686974207468652062756c6c277320657965"))
-               .to_hex(), "746865206b696420646f6e277420706c6179");
+    let mut b = Bytes::from_hex("1c0111001f010100061a024b53535009181c");
+    b.xor_bytes(&Bytes::from_hex("686974207468652062756c6c277320657965").data());
+    assert_eq!("746865206b696420646f6e277420706c6179", b.to_hex());
+  }
+
+  #[test]
+  fn xor_bytes() {
+    // https://cryptopals.com/sets/1/challenges/5
+    let mut b = Bytes::new(
+      concat!("Burning 'em, if you ain't quick and nimble\n",
+              "I go crazy when I hear a cymbal").as_bytes());
+    b.xor_cycle(b"ICE");
+    assert_eq!(concat!("0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272",
+                       "a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"),
+               b.to_hex());
   }
 }

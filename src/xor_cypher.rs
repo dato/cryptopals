@@ -44,6 +44,7 @@ fn find_xor_str(hex_strings: &[&str]) -> String {
 
 
 /// Leaves in ‘dst’ the result of `src ^ byte`.
+// TODO: use Bytes::xor_cycle() instead.
 fn xor_byte_inplace(src: &[u8], dst: &mut [u8], byte: u8) {
   for (i, c) in src.into_iter().enumerate() {
     dst[i] = c ^ byte;
