@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 const BASE64_CHARS: &'static [u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 #[derive(Clone)]
@@ -38,6 +40,33 @@ impl Bytes {
       ret.push(chr(i & 0xF));
     }
     ret
+  }
+
+  // Accepts only correctly padded input (with '=').
+  pub fn from_base64(s: &str) -> Bytes {
+    let indexes: HashMap<char, u8> = BASE64_CHARS
+      .into_iter()
+      .enumerate()
+      .map(|(i, &c)| (c as char, i as u8))
+      .collect();
+
+    let mut next: u8 = 0;
+    let mut ret = Vec::new();
+
+    // XXX: we're silently ignoring *all* invalid character; should only let
+    // '\n' and trailing '=' pass.
+    for (i, val) in s.chars().filter_map(|c| indexes.get(&c)).enumerate() {
+      next = match i % 4 {
+        0 => val << 2,
+        1 => { ret.push(next | val >> 4);
+               val << 4 },
+        2 => { ret.push(next | val >> 2);
+               val << 6 },
+        _ => { ret.push(next | val); 0 },
+      };
+    }
+
+    Bytes(ret)
   }
 
   pub fn to_base64(&self) -> String {
@@ -125,6 +154,20 @@ mod test {
     // https://cryptopals.com/sets/1/challenges/1
     assert_eq!("SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t",
                Bytes::from_hex("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d").to_base64());
+  }
+
+  #[test]
+  fn dec_base64() {
+    assert_eq!(Bytes::from_base64("YQ==").data(), b"a");
+    assert_eq!(Bytes::from_base64("emE=").data(), b"za");
+    assert_eq!(Bytes::from_base64("b3ph").data(), b"oza");
+    assert_eq!(Bytes::from_base64("bm96YQ=").data(), b"noza");
+    assert_eq!(Bytes::from_base64("aW5vemE").data(), b"inoza");
+    assert_eq!(Bytes::from_base64("cGlub3ph").data(), b"pinoza");
+    assert_eq!(Bytes::from_base64("U3Bpbm96YQ").data(), b"Spinoza");
+
+    assert_eq!(Bytes::from_base64("SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t").data(),
+               Bytes::from_hex("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d").data());
   }
 
   #[test]
