@@ -82,6 +82,17 @@ impl Bytes {
     self.xor_cycle(bytes);
   }
 
+  /// Computes the Hamming distance
+  pub fn hamming_distance(a: &str, b: &str) -> u32 {
+    let a = a.as_bytes();
+    let b = b.as_bytes();
+    let mut distance = 0;
+    for (x, y) in a.into_iter().zip(b) {
+      distance += (x ^ y).count_ones();
+    }
+    distance
+  }
+
   pub fn data(&self) -> Vec<u8> {
     self.0.clone()
   }
@@ -134,5 +145,11 @@ mod test {
     assert_eq!(concat!("0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272",
                        "a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"),
                b.to_hex());
+  }
+
+  #[test]
+  fn hamming_distance() {
+    assert_eq!(37, Bytes::hamming_distance("this is a test",
+                                           "wokka wokka!!!"));
   }
 }
