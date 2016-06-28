@@ -112,9 +112,7 @@ impl Bytes {
   }
 
   /// Computes the Hamming distance
-  pub fn hamming_distance(a: &str, b: &str) -> u32 {
-    let a = a.as_bytes();
-    let b = b.as_bytes();
+  pub fn hamming_distance(a: &[u8], b: &[u8]) -> u32 {
     let mut distance = 0;
     for (x, y) in a.into_iter().zip(b) {
       distance += (x ^ y).count_ones();
@@ -192,7 +190,7 @@ mod test {
 
   #[test]
   fn hamming_distance() {
-    assert_eq!(37, Bytes::hamming_distance("this is a test",
-                                           "wokka wokka!!!"));
+    assert_eq!(37, Bytes::hamming_distance(b"this is a test",
+                                           b"wokka wokka!!!"));
   }
 }
