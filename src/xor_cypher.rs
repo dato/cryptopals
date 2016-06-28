@@ -7,6 +7,7 @@ use std::fs::File;
 use bytes::Bytes;
 
 struct XorResult {
+  key: u8,
   distance: f64,
   result: String,
 }
@@ -15,8 +16,8 @@ struct XorResult {
 /// Returns the most likely decoding of a single-byte XOR.
 // TODO: do not hard-code FREQ_EN.
 fn decode_single_byte(data: &[u8]) -> XorResult {
-  let mut best_str = String::new();
-  let mut min_dist = ::std::f64::MAX;
+  let mut ret = XorResult { distance: ::std::f64::MAX,
+                            key: 0, result: String::new() };
   let mut dec_data = data.to_owned();
 
   for key in 0..255 {
@@ -27,12 +28,11 @@ fn decode_single_byte(data: &[u8]) -> XorResult {
     let s = String::from_utf8_lossy(&dec_data);
     let d = freq_distance(&s, &FREQ_EN);
     // Update if necessary.
-    if d < min_dist {
-      min_dist = d;
-      best_str = s.to_string();
+    if d < ret.distance {
+      ret = XorResult { key: key, distance: d, result: s.to_string() };
     }
   }
-  XorResult { distance: min_dist, result: best_str }
+  ret
 }
 
 
