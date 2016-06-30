@@ -6,6 +6,7 @@ use std::fs::File;
 use std::path::Path;
 
 use bytes::Bytes;
+use rustc_serialize::hex::FromHex;
 
 #[derive(Debug)]
 struct XorResult {
@@ -45,7 +46,10 @@ pub fn find_xor_str(filename: &str) -> String {
     Err(why) => panic!("{}", why.description()),
   };
   buf.lines()
-    .map(|s| decode_single_byte(&Bytes::from_hex(&s.unwrap()).data()))
+    .filter_map(|r| r
+                .ok()
+                .and_then(|l| l.from_hex().ok())
+                .map(|v| decode_single_byte(&v)))
     .min_by_key(|&XorResult { distance: d, .. }| ImplOrd(d))
     .unwrap()
     .result
