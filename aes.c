@@ -50,15 +50,15 @@ int main(int argc, char *argv[]) {
 
   const EVP_CIPHER *cipher = EVP_aes_128_ecb();
   EVP_DecryptInit(x, cipher, key, NULL);
-  EVP_CIPHER_CTX_set_padding(x, false);
 
   int bytes_out = 0;
+  int padding_out = 0;
 
   if (!EVP_DecryptUpdate(x, out, &bytes_out, in, (int) fsize) ||
-      bytes_out != (int) fsize) {
+      !EVP_DecryptFinal(x, out + bytes_out, &padding_out)) {
     goto cleanup;
   }
-  // FIXME: need to call EVP_DecryptFinal() if padding is disabled?
+  out[bytes_out + padding_out] = '\0';
   printf("%s", out);
   ret--;
 
