@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     goto cleanup;
   }
   // FIXME: need to call EVP_DecryptFinal() if padding is disabled?
-  printf("%s\n", out);
+  printf("%s", out);
   ret--;
 
  cleanup:
