@@ -3,6 +3,7 @@ use std::error::Error;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::fs::File;
+use std::path::Path;
 
 use bytes::Bytes;
 
@@ -94,16 +95,7 @@ fn freq_distance(data: &str, freqs: &[(char, f64)]) -> f64 {
 /// Solves https://cryptopals.com/sets/1/challenges/6.
 /// Returns the XOR key. File should be in base64.
 pub fn break_cycling_xor(filename: &str) -> Vec<u8> {
-  let mut contents = String::new();
-
-  // Read into a string.
-  match File::open(filename) {
-    Ok(f) => BufReader::new(f),
-    Err(why) => panic!("{}", why.description()),
-  }
-  .read_to_string(&mut contents).unwrap();
-
-  let data = Bytes::from_base64(&contents).data();
+  let data = ::read_base64(Path::new(filename)).unwrap();
   let mut klen: Vec<usize> = (1..40).collect();
 
   // This is slightly inefficient because sort_by_key() does not implement a
