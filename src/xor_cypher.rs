@@ -91,6 +91,76 @@ fn freq_distance(data: &str, freqs: &[(char, f64)]) -> f64 {
   distance.sqrt()
 }
 
+/// Solves https://cryptopals.com/sets/1/challenges/6.
+/// Returns the XOR key. File should be in base64.
+pub fn break_cycling_xor(filename: &str) -> Vec<u8> {
+  let mut contents = String::new();
+
+  // Read into a string.
+  match File::open(filename) {
+    Ok(f) => BufReader::new(f),
+    Err(why) => panic!("{}", why.description()),
+  }
+  .read_to_string(&mut contents).unwrap();
+
+  let data = Bytes::from_base64(&contents).data();
+  let mut klen: Vec<usize> = (1..40).collect();
+
+  // This is slightly inefficient because sort_by_key() does not implement a
+  // Schwartzian transform. See <rust-lang/rust#34447>.
+  klen.sort_by_key(|&k| ImplOrd(keysize_distance(&data, k, 4)));
+
+  (&klen[0..3])
+    .iter()
+    .map(|&keysize| guess_xor_transposed(&data, keysize))
+    .min_by_key(|&(_, distance)| ImplOrd(distance))
+    .unwrap()
+    .0
+}
+
+
+/// Compute the distance for a number of KEYSIZE blocks.
+///
+/// The first ‘num_slices’ blocks are compared to the one following them. NOTE:
+/// good values for ‘num_slices’ seem to be 3 or 4; they place the appropriate
+/// KEYSIZE (29 for challenge 1-6) at the third place. See sort_by_key() above.
+fn keysize_distance(data: &[u8], keysize: usize, num_slices: usize) -> f64 {
+  let f = |n| Bytes::hamming_distance(&data[keysize*n .. keysize*(n+1)],
+                                      &data[keysize*(n+1) .. keysize*(n+2)]) as f64;
+  let mut sum = 0.0;
+  let num_bytes = keysize * num_slices;
+
+  // TODO: use fold()
+  for i in 0..num_slices {
+    sum += f(i)
+  }
+
+  sum / num_bytes as f64
+}
+
+/// Finds out each byte of a cycling-XOR key of ‘keysize’ bytes.
+fn guess_xor_transposed(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
+  let mut distance = 0.0;
+  let mut key = Vec::with_capacity(keysize);
+  let mut bytes = Vec::with_capacity(data.len() / keysize);
+
+  for k in 0..keysize {
+    // Guess the key for all characters with the same `mod key` value.
+    bytes.truncate(0);
+    bytes.extend(data
+                 .into_iter()
+                 .enumerate()
+                 // Use iter::Step when available.
+                 .filter(|&(i, _)| i % keysize == k)
+                 .map(|(_, &c)| c));
+    let XorResult { key: k, distance: d, ..} = decode_single_byte(&bytes);
+    key.push(k);
+    distance += d;
+  }
+
+  (key, distance)
+}
+
 
 #[cfg(test)]
 mod test {
@@ -108,6 +178,12 @@ mod test {
   fn challenge_4() {
     assert_eq!("Now that the party is jumping\n",
                find_xor_str("challenge-data/4.txt"));
+  }
+
+  #[test]
+  fn challenge_6() {
+    assert_eq!(break_cycling_xor("challenge-data/6.txt"),
+               b"Terminator X: Bring the noise");
   }
 }
 
