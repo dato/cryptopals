@@ -18,3 +18,13 @@ pub fn read_base64(path: &Path) -> io::Result<Vec<u8>> {
 
   Ok(contents.as_str().from_base64().unwrap())
 }
+
+pub fn read_contents(path: &Path) -> io::Result<String> {
+  let mut contents = String::new();
+
+  try!(fs::File::open(path)
+       .map(io::BufReader::new)
+       .and_then(|mut f| f.read_to_string(&mut contents)));
+
+  Ok(contents)
+}

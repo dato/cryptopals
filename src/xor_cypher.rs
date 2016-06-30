@@ -1,8 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
-use std::io::BufReader;
-use std::io::prelude::*;
-use std::fs::File;
 use std::path::Path;
 
 use bytes::Bytes;
@@ -41,15 +37,10 @@ fn decode_single_byte(data: &[u8]) -> XorResult {
 
 /// Solves https://cryptopals.com/sets/1/challenges/4.
 pub fn find_xor_str(filename: &str) -> String {
-  let buf = match File::open(filename) {
-    Ok(f) => BufReader::new(f),
-    Err(why) => panic!("{}", why.description()),
-  };
-  buf.lines()
-    .filter_map(|r| r
-                .ok()
-                .and_then(|l| l.from_hex().ok())
-                .map(|v| decode_single_byte(&v)))
+  ::read_contents(Path::new(filename))
+    .unwrap()
+    .lines()
+    .map(|l| decode_single_byte(&l.from_hex().unwrap()))
     .min_by_key(|&XorResult { distance: d, .. }| ImplOrd(d))
     .unwrap()
     .result
