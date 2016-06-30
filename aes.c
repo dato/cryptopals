@@ -60,10 +60,10 @@ int main(int argc, char *argv[]) {
   }
   // FIXME: need to call EVP_DecryptFinal() if padding is disabled?
   printf("%s\n", out);
+  ret--;
 
  cleanup:
   EVP_CIPHER_CTX_cleanup(x);
-  ret--;
  free:
   free(in);
   free(out);
