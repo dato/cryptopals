@@ -6,6 +6,7 @@ use std::fs::File;
 
 use bytes::Bytes;
 
+#[derive(Debug)]
 struct XorResult {
   key: u8,
   distance: f64,
@@ -37,14 +38,12 @@ fn decode_single_byte(data: &[u8]) -> XorResult {
 
 
 /// Solves https://cryptopals.com/sets/1/challenges/4.
-#[allow(dead_code)]
-fn find_xor_str(filename: &str) -> String {
+pub fn find_xor_str(filename: &str) -> String {
   let buf = match File::open(filename) {
     Ok(f) => BufReader::new(f),
     Err(why) => panic!("{}", why.description()),
   };
   buf.lines()
-    // .into_iter()
     .map(|s| decode_single_byte(&Bytes::from_hex(&s.unwrap()).data()))
     .min_by_key(|&XorResult { distance: d, .. }| ImplOrd(d))
     .unwrap()
@@ -96,15 +95,14 @@ fn freq_distance(data: &str, freqs: &[(char, f64)]) -> f64 {
 #[cfg(test)]
 mod test {
   use ::bytes::Bytes;
+  use super::*;
   use super::decode_single_byte;
 
   #[test]
-  fn single_byte() {
+  fn challenge_3() {
     assert_eq!("Cooking MC's like a pound of bacon",
                decode_single_byte(&Bytes::from_hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736").data()).result);
   }
-
-  use super::find_xor_str;
 
   #[test]
   fn challenge_4() {
@@ -160,6 +158,6 @@ impl<T: PartialEq> Eq for ImplOrd<T> {}
 
 impl<T: PartialOrd> Ord for ImplOrd<T> {
     fn cmp(&self, other: &ImplOrd<T>) -> ::std::cmp::Ordering {
-        self.partial_cmp(other).unwrap() //_or(Ordering::Less)
+        self.partial_cmp(other).unwrap() // Will panic on failure.
     }
 }
