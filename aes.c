@@ -1,3 +1,4 @@
+#include <openssl/err.h>
 #include <openssl/evp.h>
 
 #include <errno.h>
@@ -56,6 +57,7 @@ int main(int argc, char *argv[]) {
 
   if (!EVP_DecryptUpdate(x, out, &bytes_out, in, (int) fsize) ||
       !EVP_DecryptFinal(x, out + bytes_out, &padding_out)) {
+    ERR_print_errors_fp(stderr);
     goto cleanup;
   }
   out[bytes_out + padding_out] = '\0';
