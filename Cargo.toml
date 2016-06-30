@@ -4,3 +4,5 @@ version = "0.1.0"
 authors = ["dato <dato@net.com.org.es>"]
 
 [dependencies]
+openssl = "0.7"
+rustc-serialize = "0.3"
