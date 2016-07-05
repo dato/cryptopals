@@ -27,7 +27,8 @@ impl Bytes {
   /// Applies XOR against a slice of the same exact size.
   pub fn xor_bytes(&mut self, bytes: &[u8]) {
     if self.0.len() != bytes.len() {
-      panic!("wrong size for slice received in xor_bytes()");
+      panic!("wrong size for slice received in xor_bytes(): {} bytes, expected {}",
+             bytes.len(), self.0.len());
     }
     self.xor_cycle(bytes);
   }
