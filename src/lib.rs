@@ -2,6 +2,7 @@
 extern crate lazy_static;
 
 mod set1;
+mod set2;
 
 use data_encoding::BASE64;
 use std::fs;
@@ -24,6 +25,7 @@ pub fn read_base64(filename: &str) -> Vec<u8> {
 #[cfg(test)]
 mod test {
   use crate::set1::*;
+  use crate::set2::*;
   use data_encoding::HEXLOWER_PERMISSIVE as HEX;
 
   #[test]
@@ -102,5 +104,16 @@ mod test {
       "Play that funky music ",
       String::from_utf8_lossy(&res).lines().last().unwrap()
     );
+  }
+
+  #[test]
+  fn challenge_9() {
+    // Implement PKCS#7 padding
+    // https://cryptopals.com/sets/2/challenges/9
+    let mut v = String::from("YELLOW SUBMARINE").into_bytes();
+    pad_pkcs7(&mut v, 20);
+    assert_eq!(v, b"YELLOW SUBMARINE\x04\x04\x04\x04");
+    pad_pkcs7(&mut v, 15);
+    assert_eq!(30, v.len());
   }
 }
