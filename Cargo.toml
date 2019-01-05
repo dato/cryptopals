@@ -2,6 +2,7 @@
 name = "cryptopals"
 version = "0.1.0"
 authors = ["dato <dato@net.com.org.es>"]
+edition = "2018"
 
 [dependencies]
 lazy_static = "1.2.0"

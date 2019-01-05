@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 
-use bytes::Bytes;
+use crate::bytes::Bytes;
 
 #[derive(Debug)]
 struct XorResult {
@@ -94,7 +94,7 @@ fn freq_distance(data: &str, freqs: &[(char, f64)]) -> f64 {
 /// Solves https://cryptopals.com/sets/1/challenges/6.
 /// Returns the XOR key. File should be in base64.
 pub fn break_cycling_xor(filename: &str) -> Vec<u8> {
-  let data = ::read_base64(Path::new(filename)).unwrap();
+  let data = crate::read_base64(Path::new(filename)).unwrap();
   let mut klen: Vec<usize> = (1..40).collect();
 
   // This is slightly inefficient because sort_by_key() does not implement a
@@ -165,7 +165,7 @@ fn guess_xor_transposed(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
 mod test {
   use super::decode_single_byte;
   use super::*;
-  use bytes::Bytes;
+  use crate::bytes::Bytes;
 
   #[test]
   fn challenge_3() {

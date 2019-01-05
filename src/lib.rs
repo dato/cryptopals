@@ -1,6 +1,5 @@
 #[macro_use]
 extern crate lazy_static;
-extern crate data_encoding;
 
 pub mod bytes;
 pub mod xor_cypher;
