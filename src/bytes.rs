@@ -1,4 +1,4 @@
-use rustc_serialize::hex::*;
+use data_encoding::HEXLOWER_PERMISSIVE as hex;
 
 #[derive(Clone)]
 pub struct Bytes(Vec<u8>);
@@ -10,11 +10,11 @@ impl Bytes {
 
   pub fn from_hex(s: &str) -> Bytes {
     // TODO(dato): allow unpadded.
-    Bytes(s.from_hex().unwrap())
+    Bytes(hex.decode(s.as_bytes()).unwrap())
   }
 
   pub fn to_hex(&self) -> String {
-    self.0.to_hex()
+    hex.encode(&self.0)
   }
 
   /// Applies cyclic XOR.

@@ -4,4 +4,5 @@ version = "0.1.0"
 authors = ["dato <dato@net.com.org.es>"]
 
 [dependencies]
-rustc-serialize = "0.3"
+lazy_static = "1.2.0"
+data-encoding = "2.1.2"

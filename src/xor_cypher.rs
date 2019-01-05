@@ -1,8 +1,8 @@
+use data_encoding::HEXLOWER_PERMISSIVE as hex;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use bytes::Bytes;
-use rustc_serialize::hex::FromHex;
 
 #[derive(Debug)]
 struct XorResult {
@@ -45,7 +45,7 @@ pub fn find_xor_str(filename: &str) -> String {
   ::read_contents(Path::new(filename))
     .unwrap()
     .lines()
-    .map(|l| decode_single_byte(&l.from_hex().unwrap()))
+    .map(|l| decode_single_byte(&hex.decode(l.as_bytes()).unwrap()))
     .min_by_key(|&XorResult { distance: d, .. }| ImplOrd(d))
     .unwrap()
     .result
