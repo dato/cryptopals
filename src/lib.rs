@@ -23,3 +23,42 @@ pub fn read_base64(path: &Path) -> io::Result<Vec<u8>> {
   let data = fs::read_to_string(path)?;
   Ok(BASE64_NL.decode(data.as_bytes()).unwrap())
 }
+
+#[cfg(test)]
+mod test {
+  use crate::set1::*;
+  use data_encoding::HEXLOWER_PERMISSIVE as HEX;
+
+  #[test]
+  fn challenge_3() {
+    // Single-byte XOR cipher
+    // https://cryptopals.com/sets/1/challenges/3
+    let bytes = HEX
+      .decode("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736".as_bytes())
+      .unwrap();
+    assert_eq!(
+      "Cooking MC's like a pound of bacon",
+      decode_single_byte(&bytes).result
+    );
+  }
+
+  #[test]
+  fn challenge_4() {
+    // Detect single-character XOR
+    // https://cryptopals.com/sets/1/challenges/4
+    assert_eq!(
+      "Now that the party is jumping\n",
+      find_xor_str("input/4.txt")
+    );
+  }
+
+  #[test]
+  fn challenge_6() {
+    // Break repeating-key XOR
+    // https://cryptopals.com/sets/1/challenges/6
+    assert_eq!(
+      break_cycling_xor("input/6.txt"),
+      b"Terminator X: Bring the noise"
+    );
+  }
+}

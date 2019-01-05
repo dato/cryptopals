@@ -6,15 +6,15 @@ use std::path::Path;
 use crate::bytes::Bytes;
 
 #[derive(Debug)]
-struct XorResult {
-  key: u8,
-  distance: f64,
-  result: String,
+pub struct XorResult {
+  pub key: u8,
+  pub distance: f64,
+  pub result: String,
 }
 
 /// Returns the most likely decoding of a single-byte XOR.
 // TODO: do not hard-code FREQ_EN.
-fn decode_single_byte(data: &[u8]) -> XorResult {
+pub fn decode_single_byte(data: &[u8]) -> XorResult {
   let mut ret = XorResult {
     distance: ::std::f64::MAX,
     key: 0,
@@ -159,41 +159,6 @@ fn guess_xor_transposed(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
   }
 
   (key, distance)
-}
-
-#[cfg(test)]
-mod test {
-  use super::*;
-  use data_encoding::HEXLOWER_PERMISSIVE as HEX;
-
-  #[test]
-  fn challenge_3() {
-    // Single-byte XOR cipher
-    // https://cryptopals.com/sets/1/challenges/3
-    let bytes = HEX
-      .decode("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736".as_bytes())
-      .unwrap();
-    assert_eq!(
-      "Cooking MC's like a pound of bacon",
-      decode_single_byte(&bytes).result
-    );
-  }
-
-  #[test]
-  fn challenge_4() {
-    assert_eq!(
-      "Now that the party is jumping\n",
-      find_xor_str("challenge-data/4.txt")
-    );
-  }
-
-  #[test]
-  fn challenge_6() {
-    assert_eq!(
-      break_cycling_xor("challenge-data/6.txt"),
-      b"Terminator X: Bring the noise"
-    );
-  }
 }
 
 const FREQ_EN: [(char, f64); 27] = [
