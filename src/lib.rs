@@ -1,8 +1,6 @@
-extern crate openssl;
 extern crate rustc_serialize;
 
 pub mod bytes;
-pub mod ecb_mode;
 pub mod xor_cypher;
 
 use std::{io, fs};
