@@ -108,12 +108,16 @@ mod test {
 
   #[test]
   fn challenge_9() {
-    // Implement PKCS#7 padding
+    // Implement PKCS#7 padding.
     // https://cryptopals.com/sets/2/challenges/9
-    let mut v = String::from("YELLOW SUBMARINE").into_bytes();
-    pad_pkcs7(&mut v, 20);
-    assert_eq!(v, b"YELLOW SUBMARINE\x04\x04\x04\x04");
-    pad_pkcs7(&mut v, 15);
-    assert_eq!(30, v.len());
+    let mut a = b"01".to_vec();
+    let mut b = b"ABC".to_vec();
+    let mut c = b"YELLOW".to_vec();
+    pkcs7_pad(&mut a, 2);
+    pkcs7_pad(&mut b, 6);
+    pkcs7_pad(&mut c, 10);
+    assert_eq!(a, b"01\x02\x02");
+    assert_eq!(b, b"ABC\x03\x03\x03");
+    assert_eq!(c, b"YELLOW\x04\x04\x04\x04");
   }
 }
