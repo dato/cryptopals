@@ -40,11 +40,20 @@ mod test {
   }
 
   #[test]
+  fn challenge_2() {
+    // https://cryptopals.com/sets/1/challenges/2
+    let mut a = HEX.decode(b"1c0111001f010100061a024b53535009181c").unwrap();
+    let b = HEX.decode(b"686974207468652062756c6c277320657965").unwrap();
+    assert!(xor_bytes(&mut a, &b));
+    assert_eq!("746865206b696420646f6e277420706c6179", HEX.encode(&a));
+  }
+
+  #[test]
   fn challenge_3() {
     // Single-byte XOR cipher
     // https://cryptopals.com/sets/1/challenges/3
     let bytes = HEX
-      .decode("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736".as_bytes())
+      .decode(b"1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
       .unwrap();
     assert_eq!(
       "Cooking MC's like a pound of bacon",

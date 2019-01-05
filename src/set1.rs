@@ -24,9 +24,22 @@ pub fn hex_to_base64(hex: &str) -> Option<String> {
 }
 
 //
+// Challenge 2: Fixed XOR.
+//
+/// Destructively applies XOR: a[i] ^= b[i].
+pub fn xor_bytes(a: &mut [u8], b: &[u8]) -> bool {
+  if a.len() != b.len() {
+    return false;
+  }
+  for (i, x) in a.iter_mut().enumerate() {
+    *x ^= b[i];
+  }
+  true
+}
+
+//
 // Challenge 3: Single-byte XOR cipher.
 //
-
 /// Returns the most likely decoding of a single-byte XOR encoding.
 // TODO: do not hard-code FREQ_EN.
 pub fn decode_single_byte(data: &[u8]) -> XorResult {

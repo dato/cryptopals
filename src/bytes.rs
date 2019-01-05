@@ -24,18 +24,6 @@ impl Bytes {
     }
   }
 
-  /// Applies XOR against a slice of the same exact size.
-  pub fn xor_bytes(&mut self, bytes: &[u8]) {
-    if self.0.len() != bytes.len() {
-      panic!(
-        "wrong size for slice received in xor_bytes(): {} bytes, expected {}",
-        bytes.len(),
-        self.0.len()
-      );
-    }
-    self.xor_cycle(bytes);
-  }
-
   /// Computes the Hamming distance
   pub fn hamming_distance(a: &[u8], b: &[u8]) -> u32 {
     let mut distance = 0;
@@ -62,14 +50,6 @@ mod test {
   fn decode_hex() {
     assert_eq!(vec![14, 10], Bytes::from_hex("0E0A").0);
     assert_eq!(vec![254, 10], Bytes::from_hex("FE0A").0);
-  }
-
-  #[test]
-  fn xor() {
-    // https://cryptopals.com/sets/1/challenges/2
-    let mut b = Bytes::from_hex("1c0111001f010100061a024b53535009181c");
-    b.xor_bytes(&Bytes::from_hex("686974207468652062756c6c277320657965").data());
-    assert_eq!("746865206b696420646f6e277420706c6179", b.to_hex());
   }
 
   #[test]
