@@ -27,8 +27,11 @@ impl Bytes {
   /// Applies XOR against a slice of the same exact size.
   pub fn xor_bytes(&mut self, bytes: &[u8]) {
     if self.0.len() != bytes.len() {
-      panic!("wrong size for slice received in xor_bytes(): {} bytes, expected {}",
-             bytes.len(), self.0.len());
+      panic!(
+        "wrong size for slice received in xor_bytes(): {} bytes, expected {}",
+        bytes.len(),
+        self.0.len()
+      );
     }
     self.xor_cycle(bytes);
   }
@@ -73,17 +76,27 @@ mod test {
   fn xor_bytes() {
     // https://cryptopals.com/sets/1/challenges/5
     let mut b = Bytes::new(
-      concat!("Burning 'em, if you ain't quick and nimble\n",
-              "I go crazy when I hear a cymbal").as_bytes());
+      concat!(
+        "Burning 'em, if you ain't quick and nimble\n",
+        "I go crazy when I hear a cymbal"
+      )
+      .as_bytes(),
+    );
     b.xor_cycle(b"ICE");
-    assert_eq!(concat!("0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272",
-                       "a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"),
-               b.to_hex());
+    assert_eq!(
+      concat!(
+        "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272",
+        "a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"
+      ),
+      b.to_hex()
+    );
   }
 
   #[test]
   fn hamming_distance() {
-    assert_eq!(37, Bytes::hamming_distance(b"this is a test",
-                                           b"wokka wokka!!!"));
+    assert_eq!(
+      37,
+      Bytes::hamming_distance(b"this is a test", b"wokka wokka!!!")
+    );
   }
 }

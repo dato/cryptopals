@@ -1,6 +1,6 @@
 use bytes::Bytes;
-use std::path::Path;
 use openssl::crypto::symm::*;
+use std::path::Path;
 
 pub fn decrypt_aes_128_ecb(filename: &str, key: &[u8]) -> Vec<u8> {
   let data = ::read_base64(Path::new(filename)).unwrap();
@@ -69,18 +69,20 @@ fn pkcs7_size(len: usize, block_len: usize) -> usize {
 
 #[cfg(test)]
 mod test {
-  use std::path::Path;
-  use super::decrypt_aes_128_ecb;
   use super::decrypt_aes_128_cbc;
+  use super::decrypt_aes_128_ecb;
   use super::pad_pkcs7;
   use super::pkcs7_size;
+  use std::path::Path;
 
   #[test]
   fn challenge_7() {
     let res = decrypt_aes_128_ecb("challenge-data/7.txt", b"YELLOW SUBMARINE");
     assert_eq!(2876, res.len());
-    assert_eq!("Play that funky music ",
-               String::from_utf8_lossy(&res).lines().last().unwrap());
+    assert_eq!(
+      "Play that funky music ",
+      String::from_utf8_lossy(&res).lines().last().unwrap()
+    );
   }
 
   #[test]
@@ -103,8 +105,11 @@ mod test {
   fn cbc_decrypt() {
     let mut data = ::read_base64(Path::new("challenge-data/10.txt")).unwrap();
     pad_pkcs7(&mut data, 16);
-    let text = decrypt_aes_128_cbc(&data, b"YELLOW SUBMARINE",
-                                   &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    let text = decrypt_aes_128_cbc(
+      &data,
+      b"YELLOW SUBMARINE",
+      &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    );
     println!("{}", String::from_utf8_lossy(&text));
   }
 }
