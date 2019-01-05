@@ -1,4 +1,6 @@
-use data_encoding::HEXLOWER_PERMISSIVE as hex;
+use data_encoding::BASE64;
+use data_encoding::HEXLOWER_PERMISSIVE as HEX;
+
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
@@ -12,7 +14,20 @@ pub struct XorResult {
   pub result: String,
 }
 
-/// Returns the most likely decoding of a single-byte XOR.
+//
+// Challenge 1: Convert hex to base64.
+//
+/// Converts a hexadecimal string to BASE64.
+pub fn hex_to_base64(hex: &str) -> Option<String> {
+  let hex = HEX.decode(hex.as_bytes()).ok()?;
+  Some(BASE64.encode(&hex))
+}
+
+//
+// Challenge 3: Single-byte XOR cipher.
+//
+
+/// Returns the most likely decoding of a single-byte XOR encoding.
 // TODO: do not hard-code FREQ_EN.
 pub fn decode_single_byte(data: &[u8]) -> XorResult {
   let mut ret = XorResult {
@@ -46,7 +61,7 @@ pub fn find_xor_str(filename: &str) -> String {
   fs::read_to_string(filename)
     .unwrap()
     .lines()
-    .map(|l| decode_single_byte(&hex.decode(l.as_bytes()).unwrap()))
+    .map(|l| decode_single_byte(&HEX.decode(l.as_bytes()).unwrap()))
     .min_by_key(|&XorResult { distance: d, .. }| ImplOrd(d))
     .unwrap()
     .result
