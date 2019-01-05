@@ -41,7 +41,7 @@ pub fn xor_zip(a: &mut [u8], b: &[u8]) -> bool {
 //
 /// Returns the most likely decoding of a single-byte XOR encoding.
 // TODO: do not hard-code FREQ_EN.
-pub fn unscramble_byte_xor(data: &[u8]) -> XorResult {
+pub fn break_xor_byte(data: &[u8]) -> XorResult {
   let mut ret = XorResult {
     distance: std::f64::MAX,
     key: 0,
@@ -79,11 +79,11 @@ fn xor_byte_into(src: &[u8], byte: u8, dst: &mut [u8]) {
 /// Challenge 4: Detect single-character XOR
 ///
 /// Detects which line in a file was single-byte XOR'd.
-pub fn find_xor_str(filename: &str) -> String {
+pub fn find_xor_byte(filename: &str) -> String {
   fs::read_to_string(filename)
     .unwrap()
     .lines()
-    .map(|l| unscramble_byte_xor(&HEX.decode(l.as_bytes()).unwrap()))
+    .map(|l| break_xor_byte(&HEX.decode(l.as_bytes()).unwrap()))
     .min_by_key(|&XorResult { distance: d, .. }| ImplOrd(d))
     .unwrap()
     .result
@@ -132,17 +132,16 @@ pub fn xor_cycle(buf: &mut [u8], key: &[u8]) {
 // Challenge 6: Break repeating-key XOR.
 //
 /// Returns the XOR key. File should be in base64.
-pub fn break_cycling_xor(filename: &str) -> Vec<u8> {
-  let data = crate::read_base64(filename);
+pub fn break_xor_cycle(data: &[u8]) -> Vec<u8> {
   let mut klen: Vec<usize> = (2..=40).collect();
 
   // This is inefficient. Better use sort_by_cached_key() when stabilized:
   // https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.sort_by_cached_key.
-  klen.sort_by_key(|&k| ImplOrd(keysize_distance(&data, k, 4)));
+  klen.sort_by_key(|&k| ImplOrd(keysize_distance(data, k, 4)));
 
   (&klen[0..3])
     .iter()
-    .map(|&keysize| guess_xor_transposed(&data, keysize))
+    .map(|&keysize| break_xor_cycle_keylen(data, keysize))
     .min_by_key(|&(_, distance)| ImplOrd(distance))
     .unwrap()
     .0
@@ -175,7 +174,7 @@ fn keysize_distance(data: &[u8], keysize: usize, num_slices: usize) -> f64 {
 }
 
 /// Finds cycling-XOR key of ‘keysize’ bytes; returns key and distance.
-fn guess_xor_transposed(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
+fn break_xor_cycle_keylen(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
   let mut distance = 0.0;
   let mut key = Vec::with_capacity(keysize);
   let mut bytes = Vec::with_capacity(data.len() / keysize);
@@ -188,7 +187,7 @@ fn guess_xor_transposed(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
       key: k,
       distance: d,
       ..
-    } = unscramble_byte_xor(&bytes);
+    } = break_xor_byte(&bytes);
     key.push(k);
     distance += d;
   }
@@ -252,7 +251,7 @@ const FREQ_EN: [(char, f64); 26] = [
 ///
 /// Stolen from https://github.com/BurntSushi/rust-stats/blob/0.1.27/src/lib.rs#L12.
 
-#[derive(Clone, PartialEq, PartialOrd)]
+#[derive(PartialEq, PartialOrd)]
 struct ImplOrd<T>(T);
 
 impl<T: PartialEq> Eq for ImplOrd<T> {}

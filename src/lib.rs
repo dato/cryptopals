@@ -54,7 +54,7 @@ mod test {
       .unwrap();
     assert_eq!(
       "Cooking MC's like a pound of bacon",
-      unscramble_byte_xor(&bytes).result
+      break_xor_byte(&bytes).result
     );
   }
 
@@ -62,7 +62,7 @@ mod test {
   fn challenge_4() {
     // Detect single-character XOR
     // https://cryptopals.com/sets/1/challenges/4
-    assert_eq!("Now that the party is jumping\n", find_xor_str("input/04"));
+    assert_eq!("Now that the party is jumping\n", find_xor_byte("input/04"));
   }
 
   #[test]
@@ -87,7 +87,7 @@ mod test {
     // https://cryptopals.com/sets/1/challenges/6
     assert_eq!(37, hamming_distance(b"this is a test", b"wokka wokka!!!"));
     assert_eq!(
-      break_cycling_xor("input/06"),
+      break_xor_cycle(&crate::read_base64("input/06")),
       b"Terminator X: Bring the noise"
     );
   }
