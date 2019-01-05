@@ -1,5 +1,6 @@
 use data_encoding::HEXLOWER_PERMISSIVE as hex;
 use std::collections::{HashMap, HashSet};
+use std::fs;
 use std::path::Path;
 
 use bytes::Bytes;
@@ -42,7 +43,7 @@ fn decode_single_byte(data: &[u8]) -> XorResult {
 
 /// Solves https://cryptopals.com/sets/1/challenges/4.
 pub fn find_xor_str(filename: &str) -> String {
-  ::read_contents(Path::new(filename))
+  fs::read_to_string(filename)
     .unwrap()
     .lines()
     .map(|l| decode_single_byte(&hex.decode(l.as_bytes()).unwrap()))
