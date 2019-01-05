@@ -1,20 +1,8 @@
-use data_encoding::HEXLOWER_PERMISSIVE as hex;
-
-#[derive(Clone)]
 pub struct Bytes(Vec<u8>);
 
 impl Bytes {
   pub fn new(xs: &[u8]) -> Bytes {
     Bytes(xs.to_vec())
-  }
-
-  pub fn from_hex(s: &str) -> Bytes {
-    // TODO(dato): allow unpadded.
-    Bytes(hex.decode(s.as_bytes()).unwrap())
-  }
-
-  pub fn to_hex(&self) -> String {
-    hex.encode(&self.0)
   }
 
   /// Applies cyclic XOR.
@@ -33,24 +21,15 @@ impl Bytes {
     distance
   }
 
-  pub fn data(&self) -> Vec<u8> {
-    self.0.clone()
-  }
-
-  pub fn reset(&mut self, other: &Bytes) {
-    (&mut self.0).copy_from_slice(&other.0);
+  pub fn data(&self) -> &[u8] {
+    &self.0
   }
 }
 
 #[cfg(test)]
 mod test {
   use super::Bytes;
-
-  #[test]
-  fn decode_hex() {
-    assert_eq!(vec![14, 10], Bytes::from_hex("0E0A").0);
-    assert_eq!(vec![254, 10], Bytes::from_hex("FE0A").0);
-  }
+  use data_encoding::HEXLOWER_PERMISSIVE as HEX;
 
   #[test]
   fn xor_bytes() {
@@ -68,7 +47,7 @@ mod test {
         "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272",
         "a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"
       ),
-      b.to_hex()
+      HEX.encode(b.data())
     );
   }
 
