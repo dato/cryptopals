@@ -57,7 +57,7 @@ mod test {
       .unwrap();
     assert_eq!(
       "Cooking MC's like a pound of bacon",
-      decode_single_byte(&bytes).result
+      unscramble_byte_xor(&bytes).result
     );
   }
 

@@ -42,18 +42,18 @@ pub fn xor_bytes(a: &mut [u8], b: &[u8]) -> bool {
 //
 /// Returns the most likely decoding of a single-byte XOR encoding.
 // TODO: do not hard-code FREQ_EN.
-pub fn decode_single_byte(data: &[u8]) -> XorResult {
+pub fn unscramble_byte_xor(data: &[u8]) -> XorResult {
   let mut ret = XorResult {
-    distance: ::std::f64::MAX,
+    distance: std::f64::MAX,
     key: 0,
     result: String::new(),
   };
   let mut dec_data = data.to_owned();
 
-  for key in 0..255 {
+  for key in 0..=255 {
     // Compute the XOR decoding. We use an explicit loop and not map() plus
     // min() to avoid creating too many String objects.
-    xor_byte_inplace(data, &mut dec_data, key);
+    xor_byte_into(data, key, &mut dec_data);
     // Compute distance.
     let s = String::from_utf8_lossy(&dec_data);
     let d = freq_distance(&s, &FREQ_EN);
@@ -69,23 +69,25 @@ pub fn decode_single_byte(data: &[u8]) -> XorResult {
   ret
 }
 
-/// Solves https://cryptopals.com/sets/1/challenges/4.
+/// Leaves in ‘dst’ the result of `src ^ byte`.
+fn xor_byte_into(src: &[u8], byte: u8, dst: &mut [u8]) {
+  for (i, c) in src.into_iter().enumerate() {
+    dst[i] = c ^ byte;
+  }
+}
+
+///
+/// Challenge 4: Detect single-character XOR
+///
+/// Detects which line in a file was single-byte XOR'd.
 pub fn find_xor_str(filename: &str) -> String {
   fs::read_to_string(filename)
     .unwrap()
     .lines()
-    .map(|l| decode_single_byte(&HEX.decode(l.as_bytes()).unwrap()))
+    .map(|l| unscramble_byte_xor(&HEX.decode(l.as_bytes()).unwrap()))
     .min_by_key(|&XorResult { distance: d, .. }| ImplOrd(d))
     .unwrap()
     .result
-}
-
-/// Leaves in ‘dst’ the result of `src ^ byte`.
-// TODO: use Bytes::xor_cycle() instead.
-fn xor_byte_inplace(src: &[u8], dst: &mut [u8], byte: u8) {
-  for (i, c) in src.into_iter().enumerate() {
-    dst[i] = c ^ byte;
-  }
 }
 
 /// Computes the distance between a string and a table of frequencies.
@@ -95,22 +97,20 @@ fn freq_distance(data: &str, freqs: &[(char, f64)]) -> f64 {
   let mut unknown_count = 0u32;
   let known_chars: HashSet<char> = freqs.iter().map(|&(c, _)| c).collect();
 
-  // TODO: use sort + group_by instead?
   for c in data.chars() {
-    let val = if known_chars.contains(&c) {
-      counts.entry(c).or_insert(0)
+    if known_chars.contains(&c) {
+      *counts.entry(c).or_insert(0) += 1;
     } else {
-      &mut unknown_count
-    };
-    *val += 1;
+      unknown_count += 1;
+    }
   }
 
   let len = data.len() as f64;
   let mut distance = unknown_count.pow(2) as f64;
 
-  for &(c, freq) in freqs {
+  for (c, freq) in freqs {
     let freq = freq * len;
-    distance += match counts.get(&c) {
+    distance += match counts.get(c) {
       Some(&x) => (freq - x as f64).powi(2),
       None => freq.powi(2),
     };
@@ -181,7 +181,7 @@ fn guess_xor_transposed(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
       key: k,
       distance: d,
       ..
-    } = decode_single_byte(&bytes);
+    } = unscramble_byte_xor(&bytes);
     key.push(k);
     distance += d;
   }
@@ -233,7 +233,7 @@ struct ImplOrd<T>(T);
 impl<T: PartialEq> Eq for ImplOrd<T> {}
 
 impl<T: PartialOrd> Ord for ImplOrd<T> {
-  fn cmp(&self, other: &ImplOrd<T>) -> ::std::cmp::Ordering {
+  fn cmp(&self, other: &ImplOrd<T>) -> std::cmp::Ordering {
     self.partial_cmp(other).unwrap() // Will panic on failure.
   }
 }
