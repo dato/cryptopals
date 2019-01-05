@@ -1,8 +1,9 @@
 #[macro_use]
 extern crate lazy_static;
 
+mod set1;
+
 pub mod bytes;
-pub mod xor_cypher;
 
 use data_encoding::BASE64;
 use std::path::Path;
