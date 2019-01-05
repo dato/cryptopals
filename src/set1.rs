@@ -91,16 +91,17 @@ pub fn find_xor_str(filename: &str) -> String {
 }
 
 /// Computes the distance between a string and a table of frequencies.
-/// TODO: uppercase, spaces, punctuation.
 fn freq_distance(data: &str, freqs: &[(char, f64)]) -> f64 {
   let mut counts = HashMap::new();
   let mut unknown_count = 0u32;
   let known_chars: HashSet<char> = freqs.iter().map(|&(c, _)| c).collect();
+  let ignore_chars: HashSet<char> = r#" ,;:.!?()-'""#.chars().collect();
 
   for c in data.chars() {
+    let c = c.to_ascii_lowercase();
     if known_chars.contains(&c) {
       *counts.entry(c).or_insert(0) += 1;
-    } else {
+    } else if !ignore_chars.contains(&c) {
       unknown_count += 1;
     }
   }
@@ -189,7 +190,7 @@ fn guess_xor_transposed(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
   (key, distance)
 }
 
-const FREQ_EN: [(char, f64); 27] = [
+const FREQ_EN: [(char, f64); 26] = [
   // From: https://en.wikipedia.org/wiki/Letter_frequency
   ('a', 0.08167),
   ('b', 0.01492),
@@ -217,7 +218,6 @@ const FREQ_EN: [(char, f64); 27] = [
   ('x', 0.00150),
   ('y', 0.01974),
   ('z', 0.00074),
-  (' ', 0.13000), // XXX this is approx but breaks the distribution
 ];
 
 /// ImplOrd takes a PartialOrd and coerces it into Ord.
