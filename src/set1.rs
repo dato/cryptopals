@@ -132,10 +132,10 @@ pub fn xor_cycle(buf: &mut [u8], key: &[u8]) {
 /// Returns the XOR key. File should be in base64.
 pub fn break_cycling_xor(filename: &str) -> Vec<u8> {
   let data = crate::read_base64(filename);
-  let mut klen: Vec<usize> = (1..40).collect();
+  let mut klen: Vec<usize> = (2..=40).collect();
 
-  // This is slightly inefficient because sort_by_key() does not implement a
-  // Schwartzian transform. See <rust-lang/rust#34447>.
+  // This is inefficient. Better use sort_by_cached_key() when stabilized:
+  // https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.sort_by_cached_key.
   klen.sort_by_key(|&k| ImplOrd(keysize_distance(&data, k, 4)));
 
   (&klen[0..3])
@@ -160,24 +160,19 @@ pub fn hamming_distance(a: &[u8], b: &[u8]) -> u32 {
 /// good values for ‘num_slices’ seem to be 3 or 4; they place the appropriate
 /// KEYSIZE (29 for challenge 1-6) at the third place. See sort_by_key() above.
 fn keysize_distance(data: &[u8], keysize: usize, num_slices: usize) -> f64 {
-  let f = |n| {
+  let dist = |n| {
     hamming_distance(
       &data[keysize * n..keysize * (n + 1)],
       &data[keysize * (n + 1)..keysize * (n + 2)],
-    ) as f64
+    )
   };
-  let mut sum = 0.0;
-  let num_bytes = keysize * num_slices;
+  let sum = (0..num_slices).map(|n| dist(n)).sum::<u32>() as f64;
+  let normsize = (keysize * num_slices) as f64;
 
-  // TODO: use fold()
-  for i in 0..num_slices {
-    sum += f(i)
-  }
-
-  sum / num_bytes as f64
+  sum / normsize
 }
 
-/// Finds out each byte of a cycling-XOR key of ‘keysize’ bytes.
+/// Finds cycling-XOR key of ‘keysize’ bytes; returns key and distance.
 fn guess_xor_transposed(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
   let mut distance = 0.0;
   let mut key = Vec::with_capacity(keysize);
@@ -186,14 +181,7 @@ fn guess_xor_transposed(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
   for k in 0..keysize {
     // Guess the key for all characters with the same `mod key` value.
     bytes.truncate(0);
-    bytes.extend(
-      data
-        .into_iter()
-        .enumerate()
-        // Use iter::Step when available.
-        .filter(|&(i, _)| i % keysize == k)
-        .map(|(_, &c)| c),
-    );
+    bytes.extend(data.into_iter().skip(k).step_by(keysize));
     let XorResult {
       key: k,
       distance: d,
