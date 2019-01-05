@@ -163,19 +163,19 @@ fn guess_xor_transposed(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
 
 #[cfg(test)]
 mod test {
-  use super::decode_single_byte;
   use super::*;
-  use crate::bytes::Bytes;
+  use data_encoding::HEXLOWER_PERMISSIVE as HEX;
 
   #[test]
   fn challenge_3() {
+    // Single-byte XOR cipher
+    // https://cryptopals.com/sets/1/challenges/3
+    let bytes = HEX
+      .decode("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736".as_bytes())
+      .unwrap();
     assert_eq!(
       "Cooking MC's like a pound of bacon",
-      decode_single_byte(
-        &Bytes::from_hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
-          .data()
-      )
-      .result
+      decode_single_byte(&bytes).result
     );
   }
 
