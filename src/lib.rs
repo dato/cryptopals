@@ -3,11 +3,8 @@ extern crate lazy_static;
 
 mod set1;
 
-pub mod bytes;
-
 use data_encoding::BASE64;
-use std::path::Path;
-use std::{fs, io};
+use std::fs;
 
 lazy_static! {
   // The default BASE64 encoding is not permissive and
@@ -19,9 +16,9 @@ lazy_static! {
   };
 }
 
-pub fn read_base64(path: &Path) -> io::Result<Vec<u8>> {
-  let data = fs::read_to_string(path)?;
-  Ok(BASE64_NL.decode(data.as_bytes()).unwrap())
+pub fn read_base64(filename: &str) -> Vec<u8> {
+  let data = fs::read_to_string(filename).unwrap();
+  BASE64_NL.decode(data.as_bytes()).unwrap()
 }
 
 #[cfg(test)]
@@ -91,6 +88,7 @@ mod test {
   fn challenge_6() {
     // Break repeating-key XOR
     // https://cryptopals.com/sets/1/challenges/6
+    assert_eq!(37, hamming_distance(b"this is a test", b"wokka wokka!!!"));
     assert_eq!(
       break_cycling_xor("input/6.txt"),
       b"Terminator X: Bring the noise"

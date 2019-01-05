@@ -3,9 +3,6 @@ use data_encoding::HEXLOWER_PERMISSIVE as HEX;
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::Path;
-
-use crate::bytes::Bytes;
 
 #[derive(Debug)]
 pub struct XorResult {
@@ -129,10 +126,12 @@ pub fn xor_cycle(buf: &mut [u8], key: &[u8]) {
   }
 }
 
-/// Solves https://cryptopals.com/sets/1/challenges/6.
+//
+// Challenge 6: Break repeating-key XOR.
+//
 /// Returns the XOR key. File should be in base64.
 pub fn break_cycling_xor(filename: &str) -> Vec<u8> {
-  let data = crate::read_base64(Path::new(filename)).unwrap();
+  let data = crate::read_base64(filename);
   let mut klen: Vec<usize> = (1..40).collect();
 
   // This is slightly inefficient because sort_by_key() does not implement a
@@ -147,6 +146,14 @@ pub fn break_cycling_xor(filename: &str) -> Vec<u8> {
     .0
 }
 
+/// Computes the Hamming distance.
+pub fn hamming_distance(a: &[u8], b: &[u8]) -> u32 {
+  a.into_iter()
+    .zip(b)
+    .map(|(x, y)| (x ^ y).count_ones())
+    .sum()
+}
+
 /// Compute the distance for a number of KEYSIZE blocks.
 ///
 /// The first ‘num_slices’ blocks are compared to the one following them. NOTE:
@@ -154,7 +161,7 @@ pub fn break_cycling_xor(filename: &str) -> Vec<u8> {
 /// KEYSIZE (29 for challenge 1-6) at the third place. See sort_by_key() above.
 fn keysize_distance(data: &[u8], keysize: usize, num_slices: usize) -> f64 {
   let f = |n| {
-    Bytes::hamming_distance(
+    hamming_distance(
       &data[keysize * n..keysize * (n + 1)],
       &data[keysize * (n + 1)..keysize * (n + 2)],
     ) as f64
