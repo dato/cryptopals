@@ -27,7 +27,7 @@ pub fn hex_to_base64(hex: &str) -> Option<String> {
 // Challenge 2: Fixed XOR.
 //
 /// Destructively applies XOR: a[i] ^= b[i].
-pub fn xor_bytes(a: &mut [u8], b: &[u8]) -> bool {
+pub fn xor_zip(a: &mut [u8], b: &[u8]) -> bool {
   if a.len() != b.len() {
     return false;
   }
@@ -118,6 +118,15 @@ fn freq_distance(data: &str, freqs: &[(char, f64)]) -> f64 {
   }
 
   distance.sqrt()
+}
+
+//
+// Challenge 5: Implement repeating-key XOR
+//
+pub fn xor_cycle(buf: &mut [u8], key: &[u8]) {
+  for (dst, &byte) in buf.iter_mut().zip(key.into_iter().cycle()) {
+    *dst ^= byte;
+  }
 }
 
 /// Solves https://cryptopals.com/sets/1/challenges/6.

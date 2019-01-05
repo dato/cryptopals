@@ -44,7 +44,7 @@ mod test {
     // https://cryptopals.com/sets/1/challenges/2
     let mut a = HEX.decode(b"1c0111001f010100061a024b53535009181c").unwrap();
     let b = HEX.decode(b"686974207468652062756c6c277320657965").unwrap();
-    assert!(xor_bytes(&mut a, &b));
+    assert!(xor_zip(&mut a, &b));
     assert_eq!("746865206b696420646f6e277420706c6179", HEX.encode(&a));
   }
 
@@ -68,6 +68,22 @@ mod test {
     assert_eq!(
       "Now that the party is jumping\n",
       find_xor_str("input/4.txt")
+    );
+  }
+
+  #[test]
+  fn challenge_5() {
+    // Implement repeating-key XOR
+    // https://cryptopals.com/sets/1/challenges/5
+    let mut bytes =
+      b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".to_owned();
+    xor_cycle(&mut bytes, b"ICE");
+    assert_eq!(
+      concat!(
+        "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272",
+        "a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"
+      ),
+      HEX.encode(&bytes)
     );
   }
 
