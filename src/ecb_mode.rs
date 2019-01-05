@@ -2,15 +2,6 @@ use bytes::Bytes;
 use openssl::crypto::symm::*;
 use std::path::Path;
 
-pub fn decrypt_aes_128_ecb(filename: &str, key: &[u8]) -> Vec<u8> {
-  let data = ::read_base64(Path::new(filename)).unwrap();
-  let crypter = Crypter::new(Type::AES_128_ECB);
-  crypter.init(Mode::Decrypt, key, &[]);
-  let mut ret = crypter.update(&data);
-  ret.extend(crypter.finalize());
-  ret
-}
-
 /// Encrypt in CBC mode, using only ECB as primitive.
 ///
 /// Should be padded lala.
@@ -65,25 +56,15 @@ fn pkcs7_size(len: usize, block_len: usize) -> usize {
   } else {
     block_len * (1 + len / block_len)
   }
+  // Or:
+  // ((len + block_len - 1) / block_len) * block_len
 }
 
 #[cfg(test)]
 mod test {
   use super::decrypt_aes_128_cbc;
-  use super::decrypt_aes_128_ecb;
   use super::pad_pkcs7;
   use super::pkcs7_size;
-  use std::path::Path;
-
-  #[test]
-  fn challenge_7() {
-    let res = decrypt_aes_128_ecb("challenge-data/7.txt", b"YELLOW SUBMARINE");
-    assert_eq!(2876, res.len());
-    assert_eq!(
-      "Play that funky music ",
-      String::from_utf8_lossy(&res).lines().last().unwrap()
-    );
-  }
 
   #[test]
   fn pkcs7_padding() {
@@ -103,7 +84,7 @@ mod test {
 
   #[test]
   fn cbc_decrypt() {
-    let mut data = ::read_base64(Path::new("challenge-data/10.txt")).unwrap();
+    let mut data = crate::read_base64("challenge-data/10.txt");
     pad_pkcs7(&mut data, 16);
     let text = decrypt_aes_128_cbc(
       &data,

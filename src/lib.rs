@@ -91,4 +91,16 @@ mod test {
       b"Terminator X: Bring the noise"
     );
   }
+
+  #[test]
+  fn challenge_7() {
+    // AES in ECB mode.
+    // https://cryptopals.com/sets/1/challenges/7
+    let res = decrypt_aes_128_ecb("input/07", b"YELLOW SUBMARINE").unwrap();
+    assert_eq!(2876, res.len());
+    assert_eq!(
+      "Play that funky music ",
+      String::from_utf8_lossy(&res).lines().last().unwrap()
+    );
+  }
 }

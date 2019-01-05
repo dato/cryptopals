@@ -1,5 +1,7 @@
 use data_encoding::BASE64;
 use data_encoding::HEXLOWER_PERMISSIVE as HEX;
+use openssl::error::ErrorStack;
+use openssl::symm::{Cipher, Crypter, Mode};
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -192,6 +194,25 @@ fn guess_xor_transposed(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
   }
 
   (key, distance)
+}
+
+//
+// Challenge 7: AES in ECB mode
+//
+pub fn decrypt_aes_128_ecb(filename: &str, key: &[u8]) -> Result<Vec<u8>, ErrorStack> {
+  let cipher = Cipher::aes_128_ecb();
+  let mut crypt = Crypter::new(cipher, Mode::Decrypt, key, None)?;
+
+  let data = crate::read_base64(filename);
+  let mut ret = vec![0; data.len() + cipher.block_size()];
+  let mut len = 0;
+
+  len += crypt.update(&data, &mut ret)?;
+  len += crypt.finalize(&mut ret)?;
+
+  ret.truncate(len);
+
+  Ok(ret)
 }
 
 const FREQ_EN: [(char, f64); 26] = [
