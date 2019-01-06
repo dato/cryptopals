@@ -196,7 +196,7 @@ fn break_xor_cycle_keylen(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
 }
 
 //
-// Challenge 7: AES in ECB mode
+// Challenge 7: AES in ECB mode.
 //
 pub fn decrypt_aes_128_ecb(filename: &str, key: &[u8]) -> Result<Vec<u8>, ErrorStack> {
   let cipher = Cipher::aes_128_ecb();

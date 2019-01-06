@@ -17,27 +17,37 @@ pub fn pkcs7_pad(data: &mut Vec<u8>, block_len: u8) {
 /// Decrypts AES-128-CBC just using ECB mode as primitive.
 pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorStack> {
   let keylen = key.len();
+
   assert_eq!(keylen, iv.len());
-  assert_eq!(0, data.len() % keylen); // FIXME: drop this requirement?
+  assert_eq!(0, data.len() % keylen);
 
   let cipher = Cipher::aes_128_ecb();
-  let mut ret = Vec::new();
+  let mut ret = Vec::with_capacity(data.len());
   let mut prev = iv.to_owned();
   let mut buf = vec![0; keylen + cipher.block_size()];
+
+  // Technically this should be inside the loop, because API docs
+  // mandate that update() not be called after finalize().
   let mut crypt = Crypter::new(cipher, Mode::Decrypt, key, None)?;
+  crypt.pad(false);
 
   for block in data.chunks(keylen) {
     assert_eq!(block.len(), keylen);
     let mut n = 0;
-    crypt.pad(false);
 
     n += crypt.update(block, &mut buf)?;
     n += crypt.finalize(&mut buf[n..])?;
 
+    // Put xor_zip() inside an assert because it returns false
+    // without XOR'ing anything if slices are different in size.
     assert!(crate::set1::xor_zip(&mut buf[..n], &prev));
 
     ret.extend(&buf[..n]);
-    prev.splice(.., block.iter().cloned());
+
+    // This hopefully doesn't allocate.
+    prev.truncate(0);
+    prev.extend_from_slice(block); /* It's certainly more readable than:
+                                    * prev.splice(.., block.iter().cloned()); */
   }
 
   // Undo PKCS#7 padding.
