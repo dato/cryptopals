@@ -29,7 +29,7 @@ mod test {
   use data_encoding::HEXLOWER_PERMISSIVE as HEX;
 
   #[test]
-  fn challenge_1() {
+  fn challenge_01() {
     // https://cryptopals.com/sets/1/challenges/1
     let hex = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
     assert_eq!(
@@ -39,7 +39,7 @@ mod test {
   }
 
   #[test]
-  fn challenge_2() {
+  fn challenge_02() {
     // https://cryptopals.com/sets/1/challenges/2
     let mut a = HEX.decode(b"1c0111001f010100061a024b53535009181c").unwrap();
     let b = HEX.decode(b"686974207468652062756c6c277320657965").unwrap();
@@ -48,7 +48,7 @@ mod test {
   }
 
   #[test]
-  fn challenge_3() {
+  fn challenge_03() {
     // Single-byte XOR cipher
     // https://cryptopals.com/sets/1/challenges/3
     let bytes = HEX
@@ -61,14 +61,14 @@ mod test {
   }
 
   #[test]
-  fn challenge_4() {
+  fn challenge_04() {
     // Detect single-character XOR
     // https://cryptopals.com/sets/1/challenges/4
     assert_eq!("Now that the party is jumping\n", find_xor_byte("input/04"));
   }
 
   #[test]
-  fn challenge_5() {
+  fn challenge_05() {
     // Implement repeating-key XOR
     // https://cryptopals.com/sets/1/challenges/5
     let mut bytes =
@@ -84,7 +84,7 @@ mod test {
   }
 
   #[test]
-  fn challenge_6() {
+  fn challenge_06() {
     // Break repeating-key XOR
     // https://cryptopals.com/sets/1/challenges/6
     assert_eq!(37, hamming_distance(b"this is a test", b"wokka wokka!!!"));
@@ -95,7 +95,7 @@ mod test {
   }
 
   #[test]
-  fn challenge_7() {
+  fn challenge_07() {
     // AES in ECB mode.
     // https://cryptopals.com/sets/1/challenges/7
     let res = decrypt_aes_128_ecb("input/07", b"YELLOW SUBMARINE").unwrap();
@@ -107,7 +107,7 @@ mod test {
   }
 
   #[test]
-  fn challenge_9() {
+  fn challenge_09() {
     // Implement PKCS#7 padding.
     // https://cryptopals.com/sets/2/challenges/9
     let mut a = b"01".to_vec();
