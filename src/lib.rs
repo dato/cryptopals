@@ -120,4 +120,19 @@ mod test {
     assert_eq!(b, b"ABC\x03\x03\x03");
     assert_eq!(c, b"YELLOW\x04\x04\x04\x04");
   }
+
+  #[test]
+  fn challenge_10() {
+    // Implement CBC mode.
+    // https://cryptopals.com/sets/2/challenges/10
+    let data = crate::read_base64("input/10");
+    let key = b"YELLOW SUBMARINE";
+    let iv = vec![0; 16];
+    let res = decrypt_aes_128_cbc(&data, key, &iv).unwrap();
+    assert_eq!(
+      "Play that funky music ",
+      String::from_utf8_lossy(&res).lines().last().unwrap()
+    );
+    assert_eq!(2876, res.len());
+  }
 }

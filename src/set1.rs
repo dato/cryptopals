@@ -204,12 +204,12 @@ pub fn decrypt_aes_128_ecb(filename: &str, key: &[u8]) -> Result<Vec<u8>, ErrorS
 
   let data = crate::read_base64(filename);
   let mut ret = vec![0; data.len() + cipher.block_size()];
-  let mut len = 0;
+  let mut tot = 0;
 
-  len += crypt.update(&data, &mut ret)?;
-  len += crypt.finalize(&mut ret)?;
+  tot += crypt.update(&data, &mut ret)?;
+  tot += crypt.finalize(&mut ret[tot..])?;
 
-  ret.truncate(len);
+  ret.truncate(tot);
 
   Ok(ret)
 }
