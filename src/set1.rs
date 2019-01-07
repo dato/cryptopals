@@ -61,7 +61,7 @@ pub fn break_xor_byte(data: &[u8]) -> XorResult {
     // Update if necessary.
     if d < ret.distance {
       ret = XorResult {
-        key: key,
+        key,
         distance: d,
         result: s.to_string(),
       };
@@ -108,12 +108,12 @@ fn freq_distance(data: &str, freqs: &[(char, f64)]) -> f64 {
   }
 
   let len = data.len() as f64;
-  let mut distance = unknown_count.pow(2) as f64;
+  let mut distance = f64::from(unknown_count.pow(2));
 
   for (c, freq) in freqs {
     let freq = freq * len;
     distance += match counts.get(c) {
-      Some(&x) => (freq - x as f64).powi(2),
+      Some(&x) => (freq - f64::from(x)).powi(2),
       None => freq.powi(2),
     };
   }
@@ -169,7 +169,7 @@ fn keysize_distance(data: &[u8], keysize: usize, num_slices: usize) -> f64 {
       &data[keysize * (n + 1)..keysize * (n + 2)],
     )
   };
-  let sum = (0..num_slices).map(|n| dist(n)).sum::<u32>() as f64;
+  let sum = f64::from((0..num_slices).map(dist).sum::<u32>());
   let normsize = (keysize * num_slices) as f64;
 
   sum / normsize
