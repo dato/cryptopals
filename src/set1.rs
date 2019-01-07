@@ -3,8 +3,10 @@ use data_encoding::HEXLOWER_PERMISSIVE as HEX;
 use openssl::error::ErrorStack;
 use openssl::symm::{Cipher, Crypter, Mode};
 
+use std::cmp::Eq;
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::hash::Hash;
 
 #[derive(Debug)]
 pub struct XorResult {
@@ -212,6 +214,29 @@ pub fn decrypt_aes_128_ecb(filename: &str, key: &[u8]) -> Result<Vec<u8>, ErrorS
   ret.truncate(tot);
 
   Ok(ret)
+}
+
+//
+// Challenge 8: Detect AES in ECB mode.
+//
+pub fn find_aes_ecb(filename: &str) -> Option<String> {
+  fs::read_to_string(filename)
+    .unwrap()
+    .lines()
+    .map(|hex| {
+      // We needn't decode if we use blocks of 32 chars.
+      (hex, max_repeat_count(hex.as_bytes(), 32))
+    })
+    .max_by_key(|&(_, count)| count)
+    .map(|(hex, _)| hex.to_owned())
+}
+
+fn max_repeat_count<T: Hash + Eq>(data: &[T], block_size: usize) -> usize {
+  let mut counts = HashMap::new();
+  for block in data.chunks(block_size) {
+    *counts.entry(block).or_insert(0) += 1;
+  }
+  *counts.values().max().unwrap_or(&0)
 }
 
 const FREQ_EN: [(char, f64); 26] = [
