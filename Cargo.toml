@@ -8,6 +8,7 @@ edition = "2018"
 openssl = "0.10.16"
 lazy_static = "1.2.0"
 data-encoding = "2.1.2"
+simple-error = "0.1.13"
 
 [profile.dev]
 opt-level = 3

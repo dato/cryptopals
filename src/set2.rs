@@ -1,5 +1,5 @@
-use openssl::error::ErrorStack;
 use openssl::symm::{Cipher, Crypter, Mode};
+use std::error::Error;
 use std::iter;
 
 //
@@ -15,7 +15,7 @@ pub fn pkcs7_pad(data: &mut Vec<u8>, block_len: u8) {
 // Challenge 10: Implement CBC mode.
 //
 /// Decrypts AES-128-CBC just using ECB mode as primitive.
-pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>, ErrorStack> {
+pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>, Box<Error>> {
   let keylen = key.len();
 
   assert_eq!(keylen, iv.len());
@@ -38,9 +38,11 @@ pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>
     n += crypt.update(block, &mut buf)?;
     n += crypt.finalize(&mut buf[n..])?;
 
-    // Put xor_zip() inside an assert because it returns false
-    // without XOR'ing anything if slices are different in size.
-    assert!(crate::set1::xor_zip(&mut buf[..n], &prev));
+    // Must check xor_zip() return value because it does nothing
+    // if the slices are different in size.
+    if !crate::set1::xor_zip(&mut buf[..n], &prev) {
+      bail!("xor_zip() returned false");
+    }
 
     ret.extend(&buf[..n]);
 
