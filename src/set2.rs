@@ -1,5 +1,6 @@
 use openssl::error::ErrorStack;
 use openssl::symm::{Cipher, Crypter, Mode};
+use rand::{random, Rng};
 use std::iter;
 
 //
@@ -59,4 +60,74 @@ pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>
   }
 
   Ok(ret)
+}
+
+//
+// Challenge 11: An ECB/CBC detection oracle.
+//
+type AesChaos = fn(&[u8]) -> Result<AesMonkey, ErrorStack>;
+
+pub struct AesMonkey {
+  cipher: Cipher,
+  ciphertext: Vec<u8>,
+}
+
+// This function generates a random key, and encrypts data with it. Half
+// of the time it will use AES-128-ECB, the other half AES-128-CBC. It's
+// the “encryption oracle” from the challenge writeup.
+//
+// Returns the ciphertext _and_ the used cipher:
+fn aes_chaos_monkey(plaintext: &[u8]) -> Result<AesMonkey, ErrorStack> {
+  // (1) Generate a random key and encrypt under it.
+  let mut rng = rand::thread_rng();
+  let key = random::<[u8; 16]>();
+
+  // (2) Have the function choose to encrypt under ECB 1/2 the time, and under
+  //     CBC the other half.
+  let cipher;
+  let iv_arr;
+  let iv: Option<&[u8]>; // Specify type to easily coerce array to slice below.
+
+  if rng.gen() {
+    iv = None;
+    cipher = Cipher::aes_128_ecb();
+  } else {
+    cipher = Cipher::aes_128_cbc();
+    iv_arr = random::<[u8; 16]>();
+    iv = Some(&iv_arr);
+  }
+
+  // (3) Have the function append 5-10 bytes (count chosen randomly)
+  // before the plaintext and 5-10 bytes after the plaintext.
+  let n = rng.gen_range(5, 11);
+  let m = rng.gen_range(5, 11);
+  let mid = n + plaintext.len();
+  let mut data = Vec::with_capacity(mid + m);
+
+  // (3a) Add the ‘n’ preamble bytes.
+  data.resize(n, 0);
+  rng.fill(&mut data[..]);
+
+  // (3b) Add the actual plaintext.
+  data.extend_from_slice(plaintext);
+  assert_eq!(data.len(), mid);
+
+  // (3c) Add the ‘m’ postamble bytes.
+  data.resize(mid + m, 0);
+  rng.fill(&mut data[mid..]);
+
+  // (4) Profit.
+  let mut n = 0;
+  let mut buf = vec![0; data.len() + cipher.block_size()];
+  let mut crypt = Crypter::new(cipher, Mode::Encrypt, &key, iv)?;
+
+  n += crypt.update(&data, &mut buf)?;
+  n += crypt.finalize(&mut buf[n..])?;
+
+  buf.truncate(n);
+
+  Ok(AesMonkey {
+    cipher,
+    ciphertext: buf,
+  })
 }
