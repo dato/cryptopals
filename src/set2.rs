@@ -79,8 +79,8 @@ pub struct AesMonkey {
 // Returns a tuple (guessed_cipher, actual_cipher) so that
 // accuracy can be verified.
 pub fn discern_ecb_cbc(oracle: Option<AesChaos>) -> (Cipher, Cipher) {
+  let input = "A".repeat(1024); // ¯\_(ツ)_/¯
   let oracle = oracle.unwrap_or(aes_chaos_monkey);
-  let input: String = iter::repeat('A').take(1024).collect();
   let result = oracle(input.as_bytes()).unwrap();
   let count = crate::set1::max_repeat_count(&result.ciphertext, 16);
 
