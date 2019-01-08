@@ -1,5 +1,6 @@
 use openssl::error::ErrorStack;
 use openssl::symm::{Cipher, Crypter, Mode};
+
 use rand::{random, Rng};
 use std::iter;
 
@@ -70,6 +71,22 @@ type AesChaos = fn(&[u8]) -> Result<AesMonkey, ErrorStack>;
 pub struct AesMonkey {
   cipher: Cipher,
   ciphertext: Vec<u8>,
+}
+
+// Guesses if an oracle encrypted in EBC or CBC mode.
+// Returns a tuple (guessed_cipher, actual_cipher) so that
+// accuracy can be verified.
+pub fn discern_ecb_cbc(oracle: Option<AesChaos>) -> (Cipher, Cipher) {
+  let oracle = oracle.unwrap_or(aes_chaos_monkey);
+  let input: String = iter::repeat('A').take(1024).collect();
+  let result = oracle(input.as_bytes()).unwrap();
+  let count = crate::set1::max_repeat_count(&result.ciphertext, 16);
+
+  if count >= 10 {
+    (Cipher::aes_128_ecb(), result.cipher)
+  } else {
+    (Cipher::aes_128_cbc(), result.cipher)
+  }
 }
 
 // This function generates a random key, and encrypts data with it. Half

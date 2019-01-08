@@ -231,7 +231,7 @@ pub fn find_aes_ecb(filename: &str) -> Option<String> {
     .map(|(hex, _)| hex.to_owned())
 }
 
-fn max_repeat_count<T: Hash + Eq>(data: &[T], block_size: usize) -> usize {
+pub fn max_repeat_count<T: Hash + Eq>(data: &[T], block_size: usize) -> usize {
   let mut counts = HashMap::new();
   for block in data.chunks(block_size) {
     *counts.entry(block).or_insert(0) += 1;
