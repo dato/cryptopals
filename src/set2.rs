@@ -1,5 +1,6 @@
 use openssl::symm::{Cipher, Crypter, Mode};
 use rand::{random, Rng};
+use simple_error::bail;
 
 use std::error::Error;
 use std::iter;
