@@ -5,6 +5,9 @@ use simple_error::bail;
 use std::error::Error;
 use std::iter;
 
+mod oracle;
+pub use self::oracle::AesOracle;
+
 //
 // Challenge 9: Implement PKCS#7 padding.
 //
