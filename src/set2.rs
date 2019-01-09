@@ -68,26 +68,37 @@ pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>
 //
 // Challenge 11: An ECB/CBC detection oracle.
 //
-type AesChaos = fn(&[u8]) -> Result<AesMonkey, Box<Error>>;
+type RandomEnc = fn(&[u8]) -> Result<Ciphertext, Box<Error>>;
 
-pub struct AesMonkey {
+pub struct Ciphertext {
   cipher: Cipher,
   ciphertext: Vec<u8>,
+}
+
+pub struct OracleGuess {
+  pub actual: Cipher,
+  pub guessed: Cipher,
 }
 
 // Guesses if an oracle encrypted in EBC or CBC mode.
 // Returns a tuple (guessed_cipher, actual_cipher) so that
 // accuracy can be verified.
-pub fn discern_ecb_cbc(oracle: Option<AesChaos>) -> (Cipher, Cipher) {
+pub fn discern_ecb_cbc(oracle: Option<RandomEnc>) -> OracleGuess {
   let input = "A".repeat(1024); // ¯\_(ツ)_/¯
-  let oracle = oracle.unwrap_or(aes_chaos_monkey);
+  let oracle = oracle.unwrap_or(aes_random_enc);
   let result = oracle(input.as_bytes()).unwrap();
   let count = crate::set1::max_repeat_count(&result.ciphertext, 16);
 
   if count >= 10 {
-    (Cipher::aes_128_ecb(), result.cipher)
+    OracleGuess {
+      actual: result.cipher,
+      guessed: Cipher::aes_128_ecb(),
+    }
   } else {
-    (Cipher::aes_128_cbc(), result.cipher)
+    OracleGuess {
+      actual: result.cipher,
+      guessed: Cipher::aes_128_cbc(),
+    }
   }
 }
 
@@ -96,7 +107,7 @@ pub fn discern_ecb_cbc(oracle: Option<AesChaos>) -> (Cipher, Cipher) {
 // the “encryption oracle” from the challenge writeup.
 //
 // Returns the ciphertext _and_ the used cipher:
-fn aes_chaos_monkey(plaintext: &[u8]) -> Result<AesMonkey, Box<Error>> {
+fn aes_random_enc(plaintext: &[u8]) -> Result<Ciphertext, Box<Error>> {
   // (1) Generate a random key and encrypt under it.
   let mut rng = rand::thread_rng();
   let key = random::<[u8; 16]>();
@@ -145,7 +156,7 @@ fn aes_chaos_monkey(plaintext: &[u8]) -> Result<AesMonkey, Box<Error>> {
 
   buf.truncate(n);
 
-  Ok(AesMonkey {
+  Ok(Ciphertext {
     cipher,
     ciphertext: buf,
   })

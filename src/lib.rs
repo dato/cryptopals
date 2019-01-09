@@ -152,8 +152,8 @@ mod test {
     // An ECB/CBC detection oracle.
     // https://cryptopals.com/sets/2/challenges/11
     for _ in 0..10 {
-      let (guessed, actual) = discern_ecb_cbc(None);
-      if guessed != actual {
+      let result = discern_ecb_cbc(None);
+      if result.guessed != result.actual {
         assert!(false, "discern_ecb_cbc() failed");
       }
     }
