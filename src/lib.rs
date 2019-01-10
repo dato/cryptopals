@@ -23,9 +23,11 @@ pub fn read_base64(filename: &str) -> Vec<u8> {
 
 #[cfg(test)]
 mod test {
+  use super::BASE64_NL;
   use crate::set1::*;
   use crate::set2::*;
   use data_encoding::HEXLOWER_PERMISSIVE as HEX;
+  use indoc::indoc;
 
   #[test]
   fn challenge_01() {
@@ -163,5 +165,22 @@ mod test {
       String::from_utf8_lossy(&res).lines().last().unwrap()
     );
     assert_eq!(2876, res.len());
+  }
+
+  #[test]
+  fn challenge_12() {
+    // Byte-at-a-time ECB decryption (Simple)
+    // https://cryptopals.com/sets/2/challenges/12
+    let plaintext = BASE64_NL
+      .decode(indoc!(
+        b"
+              Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg
+              aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq
+              dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg
+              YnkK"
+      ))
+      .unwrap();
+    let oracle = AesOracle::new(&plaintext);
+    assert_eq!(break_ecb_simple(&oracle), plaintext);
   }
 }
