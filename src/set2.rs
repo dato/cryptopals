@@ -59,11 +59,8 @@ pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>
   buf.truncate(n);
 
   // Undo PKCS#7 padding.
-  if let Some(&b) = buf.last() {
-    let start = buf.len() - b as usize;
-    if buf[start..].iter().all(|&c| c == b) {
-      buf.truncate(start);
-    }
+  if let Some(n) = pkcs7_padding_len(&buf) {
+    buf.truncate(buf.len() - n);
   }
 
   Ok(buf)
@@ -244,5 +241,25 @@ fn oracle_block_size(oracle: &AesOracle) -> usize {
       break newlen - len;
     }
     len = newlen;
+  }
+}
+
+//
+// Challenge 15: PKCS#7 padding validation.
+//
+// Returns the length of PKCS#7 padding, or None if buf is not PKCS#7-padded.
+pub fn pkcs7_padding_len(buf: &[u8]) -> Option<usize> {
+  match buf.last() {
+    None => Some(0),
+    Some(0) => None,
+    Some(&b) => {
+      let n = b as usize;
+      let start = buf.len() - n;
+      if buf[start..].iter().all(|&c| c == b) {
+        return Some(n);
+      } else {
+        None
+      }
+    }
   }
 }

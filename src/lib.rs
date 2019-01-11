@@ -174,4 +174,15 @@ mod test {
     let oracle = AesOracle::new(&plaintext);
     assert_eq!(break_ecb_simple(&oracle), plaintext);
   }
+
+  #[test]
+  fn challenge_15() {
+    // PKCS#7 padding validation.
+    // https://cryptopals.com/sets/2/challenges/15
+    assert_eq!(pkcs7_padding_len(b"ICE ICE BABY\x04\x04\x04\x04"), Some(4));
+    assert_eq!(pkcs7_padding_len(b"ICE ICE BABY\x05\x05\x05\x05"), None);
+    assert_eq!(pkcs7_padding_len(b"ICE ICE BABY\x01\x02\x03\x04"), None);
+    assert_eq!(pkcs7_padding_len(b"ICE ICE BABY\x00"), None);
+    assert_eq!(pkcs7_padding_len(b""), Some(0));
+  }
 }
