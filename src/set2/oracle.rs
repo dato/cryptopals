@@ -18,8 +18,14 @@ impl AesOracle {
     let plaintext = plaintext.to_owned();
     AesOracle { key, plaintext }
   }
+}
 
-  pub fn encrypt_with_controlled(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>> {
+pub trait Oracle {
+  fn encrypt_with_controlled(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>>;
+}
+
+impl Oracle for AesOracle {
+  fn encrypt_with_controlled(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>> {
     let cipher = Cipher::aes_128_ecb();
     let mut crypt = Crypter::new(cipher, Mode::Encrypt, &self.key, None)?;
 
