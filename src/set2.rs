@@ -246,3 +246,52 @@ fn oracle_block_size(oracle: &AesOracle) -> usize {
     len = newlen;
   }
 }
+
+//
+// Challenge 14: Byte-at-a-time ECB decryption (Harder).
+//
+pub fn break_ecb_hard(oracle: &RndAesOracle) -> Vec<u8> {
+  vec![]
+}
+
+/// Finds out the length of the “prefix poison” (prepended random bytes).
+pub fn oracle_poison_len(oracle: &RndAesOracle, bsize: usize) -> Option<usize> {
+  // This verifies whether a given fill length produces two
+  // identical ECB blocks at the right position.
+  let verify_ecb_blocks = |bytes: &[u8], beg: usize| {
+    // The encrypted data.
+    let ecb = oracle.encrypt_with_controlled(&bytes).unwrap();
+    let mid = beg + bsize;
+    let end = mid + bsize;
+
+    if ecb[beg..mid] != ecb[mid..end] {
+      return false;
+    }
+
+    // Once we find two equal ECB blocks, we need to re-verify using
+    // a different fill byte. Otherwise, our result would be incorrect
+    // if the plaintext matched our fill.
+    let bytes: Vec<_> = bytes.iter().map(|b| b + 1).collect();
+    let ecb = oracle.encrypt_with_controlled(&bytes).unwrap();
+
+    ecb[beg..mid] == ecb[mid..end]
+  };
+
+  let totlen = oracle.encrypt_with_controlled(&[]).unwrap().len();
+  let maxblock = totlen / bsize;
+  let mut bytes = vec![0; bsize * 2]; // Ideally same pad byte as plaintext in tests.
+
+  for blk in 0..maxblock {
+    bytes.truncate(bsize * 2);
+    for n in (0..=bsize).rev() {
+      let pos = bsize * (blk + (bsize + n - 1) / bsize);
+      if verify_ecb_blocks(&bytes, pos) {
+        let plen = blk * bsize + n;
+        return Some(plen);
+      }
+      bytes.push(bytes[0]);
+    }
+  }
+
+  None
+}
