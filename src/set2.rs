@@ -2,8 +2,12 @@ use openssl::symm::{Cipher, Crypter, Mode};
 use rand::{random, Rng};
 use simple_error::bail;
 
+use std::collections::HashMap;
 use std::error::Error;
 use std::iter;
+
+mod oracle;
+pub use self::oracle::AesOracle;
 
 //
 // Challenge 9: Implement PKCS#7 padding.
@@ -160,4 +164,85 @@ fn aes_random_enc(plaintext: &[u8]) -> Result<Ciphertext, Box<Error>> {
     cipher,
     ciphertext: buf,
   })
+}
+
+//
+// Challenge 12: Byte-at-a-time ECB decryption (Simple).
+//
+pub fn break_ecb_simple(oracle: &AesOracle) -> Vec<u8> {
+  // (1) Discover the block size of the cipher. (You know it,
+  // but do this step anyway.)
+  let bsize = oracle_block_size(oracle);
+  assert_eq!(16, bsize);
+
+  // (2) Detect that the function is using ECB. (You already know,
+  // but do this step anyway.)
+  let repeat = "A".repeat(bsize * 2);
+  let ecb_data = oracle.encrypt_with_prefix(repeat.as_bytes()).unwrap();
+  assert_eq!(ecb_data[..bsize], ecb_data[bsize..bsize * 2]);
+
+  let mut deciphered = vec![];
+  let paylen = oracle.encrypt_with_prefix(&[]).unwrap().len();
+  let craft_byte = 0u8; // Any value will do.
+
+  for i in 0..paylen {
+    // (3) Knowing the block size [and how many bytes you've uncovered],
+    // craft an input block that is exactly 1 byte short.
+    let input = vec![craft_byte; bsize - (i % bsize) - 1];
+    if let Some(byte) = dictionary_attack(oracle, input, &deciphered) {
+      deciphered.push(byte);
+    } else {
+      // Hopefully this is the _second_ padding byte (PKCS#7).
+      deciphered.pop();
+      break;
+    }
+  }
+
+  deciphered
+}
+
+fn dictionary_attack(oracle: &AesOracle, mut input: Vec<u8>, known: &[u8]) -> Option<u8> {
+  let totlen = input.len() + known.len() + 1;
+  let mut dict = HashMap::new();
+  let mut want = oracle.encrypt_with_prefix(&input).unwrap();
+
+  assert_eq!(totlen % 16, 0);
+
+  want.truncate(totlen);
+  input.extend_from_slice(known);
+
+  // (4) Make a dictionary of very possible last byte by feeding different
+  // strings to the oracle.
+  input.push(0);
+  assert_eq!(totlen, input.len());
+
+  for c in 0..=255 {
+    input[totlen - 1] = c;
+    let mut have = oracle.encrypt_with_prefix(&input).unwrap();
+    have.truncate(totlen);
+    dict.insert(have, c);
+  }
+
+  // (5) Match the output of the one-byte-short input to one of the entries in
+  // your dictionary. You've now discovered the first byte of unknown-string.
+  dict.get(&want).cloned()
+}
+
+fn oracle_block_size(oracle: &AesOracle) -> usize {
+  let paylen = |pfx: &Vec<u8>| oracle.encrypt_with_prefix(pfx).unwrap().len();
+
+  let mut pfx = vec![];
+  let mut len = paylen(&pfx);
+  let mut newlen;
+
+  loop {
+    // This loop could hangs if oracle misbehaves.
+    pfx.push(0);
+    newlen = paylen(&pfx);
+
+    if newlen > len {
+      break newlen - len;
+    }
+    len = newlen;
+  }
 }
