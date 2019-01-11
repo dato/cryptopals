@@ -178,11 +178,11 @@ pub fn break_ecb_simple(oracle: &AesOracle) -> Vec<u8> {
   // (2) Detect that the function is using ECB. (You already know,
   // but do this step anyway.)
   let repeat = "A".repeat(bsize * 2);
-  let ecb_data = oracle.encrypt_with_prefix(repeat.as_bytes()).unwrap();
+  let ecb_data = oracle.encrypt_with_controlled(repeat.as_bytes()).unwrap();
   assert_eq!(ecb_data[..bsize], ecb_data[bsize..bsize * 2]);
 
   let mut deciphered = vec![];
-  let paylen = oracle.encrypt_with_prefix(&[]).unwrap().len();
+  let paylen = oracle.encrypt_with_controlled(&[]).unwrap().len();
   let craft_byte = 0u8; // Any value will do.
 
   for i in 0..paylen {
@@ -204,7 +204,7 @@ pub fn break_ecb_simple(oracle: &AesOracle) -> Vec<u8> {
 fn dictionary_attack(oracle: &AesOracle, mut input: Vec<u8>, known: &[u8]) -> Option<u8> {
   let totlen = input.len() + known.len() + 1;
   let mut dict = HashMap::new();
-  let mut want = oracle.encrypt_with_prefix(&input).unwrap();
+  let mut want = oracle.encrypt_with_controlled(&input).unwrap();
 
   assert_eq!(totlen % 16, 0);
 
@@ -218,7 +218,7 @@ fn dictionary_attack(oracle: &AesOracle, mut input: Vec<u8>, known: &[u8]) -> Op
 
   for c in 0..=255 {
     input[totlen - 1] = c;
-    let mut have = oracle.encrypt_with_prefix(&input).unwrap();
+    let mut have = oracle.encrypt_with_controlled(&input).unwrap();
     have.truncate(totlen);
     dict.insert(have, c);
   }
@@ -229,7 +229,7 @@ fn dictionary_attack(oracle: &AesOracle, mut input: Vec<u8>, known: &[u8]) -> Op
 }
 
 fn oracle_block_size(oracle: &AesOracle) -> usize {
-  let paylen = |pfx: &Vec<u8>| oracle.encrypt_with_prefix(pfx).unwrap().len();
+  let paylen = |pfx: &Vec<u8>| oracle.encrypt_with_controlled(pfx).unwrap().len();
 
   let mut pfx = vec![];
   let mut len = paylen(&pfx);

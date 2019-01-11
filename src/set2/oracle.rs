@@ -19,7 +19,7 @@ impl AesOracle {
     AesOracle { key, plaintext }
   }
 
-  pub fn encrypt_with_prefix(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>> {
+  pub fn encrypt_with_controlled(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>> {
     let cipher = Cipher::aes_128_ecb();
     let mut crypt = Crypter::new(cipher, Mode::Encrypt, &self.key, None)?;
 
