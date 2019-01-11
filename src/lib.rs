@@ -156,15 +156,6 @@ mod test {
         assert!(false, "discern_ecb_cbc() failed");
       }
     }
-    let data = crate::read_base64("input/10");
-    let key = b"YELLOW SUBMARINE";
-    let iv = vec![0; 16];
-    let res = decrypt_aes_128_cbc(&data, key, &iv).unwrap();
-    assert_eq!(
-      "Play that funky music ",
-      String::from_utf8_lossy(&res).lines().last().unwrap()
-    );
-    assert_eq!(2876, res.len());
   }
 
   #[test]
