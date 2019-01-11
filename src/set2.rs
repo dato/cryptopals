@@ -169,7 +169,7 @@ fn aes_random_enc(plaintext: &[u8]) -> Result<Ciphertext, Box<Error>> {
 //
 // Challenge 12: Byte-at-a-time ECB decryption (Simple).
 //
-pub fn break_ecb_simple(oracle: &AesOracle) -> Vec<u8> {
+pub fn break_ecb_simple<O: Oracle>(oracle: &O) -> Vec<u8> {
   // (1) Discover the block size of the cipher. (You know it,
   // but do this step anyway.)
   let bsize = oracle_block_size(oracle);
@@ -201,7 +201,7 @@ pub fn break_ecb_simple(oracle: &AesOracle) -> Vec<u8> {
   deciphered
 }
 
-fn dictionary_attack(oracle: &AesOracle, mut input: Vec<u8>, known: &[u8]) -> Option<u8> {
+fn dictionary_attack<O: Oracle>(oracle: &O, mut input: Vec<u8>, known: &[u8]) -> Option<u8> {
   let totlen = input.len() + known.len() + 1;
   let mut dict = HashMap::new();
   let mut want = oracle.encrypt_with_controlled(&input).unwrap();
@@ -228,7 +228,7 @@ fn dictionary_attack(oracle: &AesOracle, mut input: Vec<u8>, known: &[u8]) -> Op
   dict.get(&want).cloned()
 }
 
-fn oracle_block_size(oracle: &AesOracle) -> usize {
+fn oracle_block_size<O: Oracle>(oracle: &O) -> usize {
   let paylen = |pfx: &Vec<u8>| oracle.encrypt_with_controlled(pfx).unwrap().len();
 
   let mut pfx = vec![];
@@ -236,7 +236,7 @@ fn oracle_block_size(oracle: &AesOracle) -> usize {
   let mut newlen;
 
   loop {
-    // This loop could hangs if oracle misbehaves.
+    // This loop could hang if oracle misbehaves.
     pfx.push(0);
     newlen = paylen(&pfx);
 
@@ -251,7 +251,44 @@ fn oracle_block_size(oracle: &AesOracle) -> usize {
 // Challenge 14: Byte-at-a-time ECB decryption (Harder).
 //
 pub fn break_ecb_hard(oracle: &RndAesOracle) -> Vec<u8> {
-  vec![]
+  // We can use break_ecb_simple() if we wrap RndAesOracle with a
+  // wrapper that strips the prepended random bytes in every call
+  // to encrypt_with_controlled().
+  let oracle = RndAesWrap::new(oracle);
+  break_ecb_simple(&oracle)
+}
+
+struct RndAesWrap<'a> {
+  oracle: &'a RndAesOracle,
+  block_size: usize,
+  poison_len: usize,
+}
+
+impl<'a> RndAesWrap<'a> {
+  fn new(oracle: &'a RndAesOracle) -> RndAesWrap {
+    let block_size = oracle_block_size(oracle);
+    let poison_len = oracle_poison_len(oracle, block_size).unwrap();
+    RndAesWrap {
+      oracle,
+      block_size,
+      poison_len,
+    }
+  }
+}
+
+impl<'a> Oracle for RndAesWrap<'a> {
+  fn encrypt_with_controlled(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>> {
+    // Neuters the poisoning bytes by padding them up to a block boundary, and
+    // stripping that amount after the call to AesOracle::encrypt_with_controlled.
+    let padsize = self.block_size - self.poison_len % self.block_size;
+    let mut vec = vec![0; padsize];
+    vec.extend_from_slice(prefix);
+    let ecb = self.oracle.encrypt_with_controlled(&vec);
+    ecb.map(|mut v| {
+      v.drain(0..self.poison_len + padsize);
+      v
+    })
+  }
 }
 
 /// Finds out the length of the “prefix poison” (prepended random bytes).
