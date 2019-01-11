@@ -178,7 +178,9 @@ pub fn break_ecb_simple(oracle: &AesOracle) -> Vec<u8> {
 
   // (2) Detect that the function is using ECB. (You already know,
   // but do this step anyway.)
-  // TODO.
+  let repeat = "A".repeat(bsize * 2);
+  let ecb_data = oracle.encrypt_with_prefix(repeat.as_bytes()).unwrap();
+  assert_eq!(ecb_data[..bsize], ecb_data[bsize..bsize * 2]);
 
   let mut deciphered = vec![];
   let paylen = oracle.encrypt_with_prefix(&[]).unwrap().len();
