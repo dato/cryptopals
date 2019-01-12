@@ -99,7 +99,8 @@ mod test {
   fn challenge_07() {
     // AES in ECB mode.
     // https://cryptopals.com/sets/1/challenges/7
-    let res = decrypt_aes_128_ecb("input/07", b"YELLOW SUBMARINE").unwrap();
+    let data = crate::read_base64("input/07");
+    let res = decrypt_aes_128_ecb(&data, b"YELLOW SUBMARINE").unwrap();
     assert_eq!(res.len(), 2876);
     assert_eq!(
       String::from_utf8_lossy(&res).lines().last().unwrap(),

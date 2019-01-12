@@ -200,11 +200,9 @@ fn break_xor_cycle_keylen(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
 //
 // Challenge 7: AES in ECB mode.
 //
-pub fn decrypt_aes_128_ecb(filename: &str, key: &[u8]) -> Result<Vec<u8>, Box<Error>> {
+pub fn decrypt_aes_128_ecb(data: &[u8], key: &[u8]) -> Result<Vec<u8>, Box<Error>> {
   let cipher = Cipher::aes_128_ecb();
   let mut crypt = Crypter::new(cipher, Mode::Decrypt, key, None)?;
-
-  let data = crate::read_base64(filename);
   let mut ret = vec![0; data.len() + cipher.block_size()];
   let mut tot = 0;
 
