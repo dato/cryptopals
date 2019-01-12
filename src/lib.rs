@@ -176,6 +176,23 @@ mod test {
   }
 
   #[test]
+  fn challenge_14() {
+    // Byte-at-a-time ECB decryption (Harder).
+    // https://cryptopals.com/sets/2/challenges/14
+    let plaintext = BASE64_NL
+      .decode(indoc!(
+        b"
+              Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg
+              aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq
+              dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg
+              YnkK"
+      ))
+      .unwrap();
+    let oracle = RndAesOracle::new(&plaintext);
+    assert_eq!(break_ecb_hard(&oracle), plaintext);
+  }
+
+  #[test]
   fn challenge_15() {
     // PKCS#7 padding validation.
     // https://cryptopals.com/sets/2/challenges/15
