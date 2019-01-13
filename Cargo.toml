@@ -5,6 +5,7 @@ authors = ["dato <dato@net.com.org.es>"]
 edition = "2018"
 
 [dependencies]
+url = "1.7.2"
 rand = "0.6.3"
 indoc = "0.3.1"
 openssl = "0.10.16"

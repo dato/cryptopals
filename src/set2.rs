@@ -245,6 +245,16 @@ fn oracle_block_size<O: Oracle>(oracle: &O) -> usize {
 }
 
 //
+// Challenge 13: ECB cut-and-paste.
+//
+/// Returns a ciphertext that includes ‘role=admin’.
+pub fn break_ecb_auth(auth: &EcbProfiles) -> Vec<u8> {
+  auth.profile_for("email=c&role=admin");
+  // vec![]
+  b"role=admin".to_vec()
+}
+
+//
 // Challenge 14: Byte-at-a-time ECB decryption (Harder).
 //
 pub fn break_ecb_hard(oracle: &RndAesOracle) -> Vec<u8> {
