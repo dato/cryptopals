@@ -342,7 +342,7 @@ pub fn pkcs7_padding_len(buf: &[u8]) -> Option<usize> {
       let n = b as usize;
       let start = buf.len() - n;
       if buf[start..].iter().all(|&c| c == b) {
-        return Some(n);
+        Some(n)
       } else {
         None
       }
