@@ -15,6 +15,21 @@ pub struct RndAesOracle {
   oracle: AesOracle,
 }
 
+// To generalize both oracles into a single method.
+pub trait Oracle {
+  fn encrypt_with_controlled(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>>;
+}
+
+// For challenge 13: encrypts a username's metadata (email, uid, role).
+pub struct EcbProfiles {
+  key: Vec<u8>,
+}
+
+/*
+ * Implementations follow.
+ *
+ */
+
 impl AesOracle {
   pub fn new(plaintext: &[u8]) -> AesOracle {
     let key = rand::random::<[u8; 16]>();
@@ -44,10 +59,6 @@ impl RndAesOracle {
   }
 }
 
-pub trait Oracle {
-  fn encrypt_with_controlled(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>>;
-}
-
 impl Oracle for AesOracle {
   fn encrypt_with_controlled(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>> {
     let cipher = Cipher::aes_128_ecb();
@@ -73,6 +84,49 @@ impl Oracle for RndAesOracle {
   fn encrypt_with_controlled(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>> {
     let combined: Vec<_> = self.poison.iter().chain(prefix).cloned().collect();
     self.oracle.encrypt_with_controlled(&combined)
+  }
+}
+
+impl EcbProfiles {
+  pub fn new() -> EcbProfiles {
+    let key = rand::random::<[u8; 16]>();
+    EcbProfiles { key: key.to_vec() }
+  }
+
+  /// Takes an address, returns the encrypted profile.
+  pub fn profile_for(&self, email: &str) -> Vec<u8> {
+    let mut email = String::from(email);
+    email.replace("&", "");
+    email.replace("=", "");
+
+    let query = format!("email={}&uid=10&role=user", email);
+
+    let data = query.as_bytes();
+    let cipher = Cipher::aes_128_ecb();
+    let mut crypt = Crypter::new(cipher, Mode::Encrypt, &self.key, None).unwrap();
+    let mut ret = vec![0; data.len() + cipher.block_size()];
+    let mut tot = 0;
+    tot += crypt.update(data, &mut ret).unwrap();
+    tot += crypt.finalize(&mut ret[tot..]).unwrap();
+    ret.truncate(tot);
+    ret
+  }
+
+  /// Takes an encrypted profile, searches for role=admin.
+  pub fn is_role_admin(&self, ciphertext: &[u8]) -> bool {
+    let bytes = crate::set1::decrypt_aes_128_ecb(ciphertext, &self.key).unwrap();
+    let query = String::from_utf8_lossy(&bytes).to_owned();
+
+    for param in query.split('&') {
+      if let Some(pos) = param.find('=') {
+        let key = &param[..pos];
+        let val = &param[pos + 1..];
+        if key == "role" && val == "admin" {
+          return true;
+        }
+      }
+    }
+    false
   }
 }
 

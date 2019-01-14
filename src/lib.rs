@@ -177,6 +177,14 @@ mod test {
   }
 
   #[test]
+  fn challenge_13() {
+    let auth = EcbProfiles::new();
+    let jane = auth.profile_for("jane@hackers.com");
+    assert!(!auth.is_role_admin(&jane));
+    assert!(auth.is_role_admin(&break_ecb_auth(&auth)));
+  }
+
+  #[test]
   fn challenge_14() {
     // Byte-at-a-time ECB decryption (Harder).
     // https://cryptopals.com/sets/2/challenges/14

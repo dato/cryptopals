@@ -248,6 +248,62 @@ fn oracle_block_size<O: Oracle>(oracle: &O) -> usize {
 }
 
 //
+// Challenge 13: ECB cut-and-paste.
+//
+/// Returns a ciphertext that includes ‘role=admin’.
+pub fn break_ecb_auth(auth: &EcbProfiles) -> Vec<u8> {
+  let block_size = 16;
+
+  // We want an e-mail address so that the prefix:
+  //
+  //   email=EMAIL&uid=10&role=
+  //
+  // is block-aligned. This will allow as to attack the role value
+  // itself.
+  //
+  // I thought we had to find this EMAIL based only on the oracke,
+  // but I cannot see how to do it? According to this writeup:
+  //
+  //     https://cypher.codes/writing/cryptopals-challenge-set-2
+  //
+  // it should be fine to do it by hand.
+
+  let mut str_len = "email=&uid=10&role=".len();
+  let aligned_email = "A".repeat(block_size - str_len % block_size);
+
+  str_len += aligned_email.len();
+  assert_eq!(str_len % block_size, 0);
+
+  let mut prefix = auth.profile_for(&aligned_email);
+
+  // Lose the last block (has ‘user’ and PKCS#7 padding).
+  prefix.truncate(str_len);
+
+  // Now we want to construct a e-mail wit the form:
+  //
+  //     EMAIL := EMAIL_BEG || "admin" || EMAIL_END
+  //
+  // with the properties:
+  //
+  //     - email=EMAIL_BEG is block-aligned
+  //     - EMAIL_END is a valid PKCS#7 padding for "admin"
+  //
+  // However, the PKCS#7 padding would be a low byte (11u8), and any
+  // URL-quoting library would percent-escape the hell out of it. But,
+  // again according to the above writeup, for this to be feasible at
+  // all PROFILE_FOR() SHOULD ONLY ESCAPE ‘=’ AND ‘&’. :-(
+  let mut email_beg = vec![PAD_BYTE; block_size - "email=".len() % block_size];
+  let mut email_end = "admin".as_bytes().to_vec();
+
+  pkcs7_pad(&mut email_end, block_size as u8);
+  email_beg.extend_from_slice(&email_end);
+  let suffix = auth.profile_for(&String::from_utf8(email_beg).unwrap());
+
+  prefix.extend_from_slice(&suffix[block_size..block_size * 2]);
+  prefix
+}
+
+//
 // Challenge 14: Byte-at-a-time ECB decryption (Harder).
 //
 pub fn break_ecb_hard(oracle: &RndAesOracle) -> Vec<u8> {
@@ -341,6 +397,7 @@ pub fn pkcs7_padding_len(buf: &[u8]) -> Option<usize> {
   match buf.last() {
     None => Some(0),
     Some(0) => None,
+    Some(&b) if b as usize > buf.len() => None,
     Some(&b) => {
       let n = b as usize;
       let start = buf.len() - n;
