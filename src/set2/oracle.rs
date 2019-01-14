@@ -21,7 +21,7 @@ pub trait Oracle {
 }
 
 // For challenge 13: encrypts a username's metadata (email, uid, role).
-pub struct EcbProfiles {
+pub struct EcbAuth {
   key: Vec<u8>,
 }
 
@@ -87,15 +87,15 @@ impl Oracle for RndAesOracle {
   }
 }
 
-impl EcbProfiles {
-  pub fn new() -> EcbProfiles {
+impl EcbAuth {
+  pub fn new() -> EcbAuth {
     let key = rand::random::<[u8; 16]>();
-    EcbProfiles { key: key.to_vec() }
+    EcbAuth { key: key.to_vec() }
   }
 
   /// Takes an address, returns the encrypted profile.
   pub fn profile_for(&self, email: &str) -> Vec<u8> {
-    let email = String::from(email).replace('&', "").replace('=', "");
+    let email = email.replace('&', "").replace('=', "");
     let query = format!("email={}&uid=10&role=user", email);
 
     let data = query.as_bytes();
@@ -112,7 +112,7 @@ impl EcbProfiles {
   /// Takes an encrypted profile, searches for role=admin.
   pub fn is_role_admin(&self, ciphertext: &[u8]) -> bool {
     let bytes = crate::set1::decrypt_aes_128_ecb(ciphertext, &self.key).unwrap();
-    let query = String::from_utf8_lossy(&bytes).to_owned();
+    let query = String::from_utf8_lossy(&bytes);
 
     for param in query.split('&') {
       if let Some(pos) = param.find('=') {
