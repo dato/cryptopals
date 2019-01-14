@@ -21,7 +21,7 @@ pub trait Oracle {
 }
 
 // For challenge 13: encrypts a username's metadata (email, uid, role).
-pub struct EcbProfiles {
+pub struct EcbAuth {
   key: Vec<u8>,
 }
 
@@ -87,10 +87,10 @@ impl Oracle for RndAesOracle {
   }
 }
 
-impl EcbProfiles {
-  pub fn new() -> EcbProfiles {
+impl EcbAuth {
+  pub fn new() -> EcbAuth {
     let key = rand::random::<[u8; 16]>();
-    EcbProfiles { key: key.to_vec() }
+    EcbAuth { key: key.to_vec() }
   }
 
   /// Takes an address, returns the encrypted profile.

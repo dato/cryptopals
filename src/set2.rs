@@ -85,7 +85,7 @@ pub struct OracleGuess {
   pub guessed: Cipher,
 }
 
-// Guesses if an oracle encrypted in EBC or CBC mode.
+// Guesses if an oracle encrypted in ECB or CBC mode.
 // Returns a tuple (guessed_cipher, actual_cipher) so that
 // accuracy can be verified.
 pub fn discern_ecb_cbc(oracle: Option<RandomEnc>) -> OracleGuess {
@@ -251,7 +251,7 @@ fn oracle_block_size(oracle: &impl Oracle) -> usize {
 // Challenge 13: ECB cut-and-paste.
 //
 /// Returns a ciphertext that includes ‘role=admin’.
-pub fn break_ecb_auth(auth: &EcbProfiles) -> Vec<u8> {
+pub fn break_ecb_auth(auth: &EcbAuth) -> Vec<u8> {
   let block_size = 16;
 
   // We want an e-mail address so that the prefix:
