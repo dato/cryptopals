@@ -1,6 +1,5 @@
 use openssl::symm::{Cipher, Crypter, Mode};
 use rand::Rng;
-use url::Url;
 
 use std::error::Error;
 
@@ -96,15 +95,13 @@ impl EcbProfiles {
 
   /// Takes an address, returns the encrypted profile.
   pub fn profile_for(&self, email: &str) -> Vec<u8> {
-    let mut url = self.url();
-    url
-      .query_pairs_mut()
-      .clear()
-      .append_pair("email", email)
-      .append_pair("uid", "10")
-      .append_pair("role", "user");
+    let mut email = String::from(email);
+    email.replace("&", "");
+    email.replace("=", "");
 
-    let data = url.query().unwrap().as_bytes();
+    let query = format!("email={}&uid=10&role=user", email);
+
+    let data = query.as_bytes();
     let cipher = Cipher::aes_128_ecb();
     let mut crypt = Crypter::new(cipher, Mode::Encrypt, &self.key, None).unwrap();
     let mut ret = vec![0; data.len() + cipher.block_size()];
@@ -117,23 +114,19 @@ impl EcbProfiles {
 
   /// Takes an encrypted profile, searches for role=admin.
   pub fn is_role_admin(&self, ciphertext: &[u8]) -> bool {
-    let bytes = ciphertext; //crate::set1::decrypt_aes_128_ecb(ciphertext, &self.key).unwrap();
-    let query = String::from_utf8_lossy(bytes).to_owned();
+    let bytes = crate::set1::decrypt_aes_128_ecb(ciphertext, &self.key).unwrap();
+    let query = String::from_utf8_lossy(&bytes).to_owned();
 
-    let mut url = self.url();
-    url.set_query(Some(&query));
-
-    for (key, val) in url.query_pairs() {
-      if key == "role" && val == "admin" {
-        // TODO: verify *all* role pairs?
-        return true;
+    for param in query.split('&') {
+      if let Some(pos) = param.find('=') {
+        let key = &param[..pos];
+        let val = &param[pos + 1..];
+        if key == "role" && val == "admin" {
+          return true;
+        }
       }
     }
     false
-  }
-
-  fn url(&self) -> Url {
-    Url::parse("https://cryptopals.com/sets/2/challenges/13").unwrap()
   }
 }
 
