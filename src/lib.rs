@@ -145,6 +145,8 @@ mod test {
       "Play that funky music "
     );
     assert_eq!(res.len(), 2876);
+    let newdata = encrypt_aes_128_cbc(&res, key, &iv).unwrap();
+    assert_eq!(newdata, data);
   }
 
   #[test]
