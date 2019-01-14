@@ -9,6 +9,10 @@ use std::iter;
 mod oracle;
 pub use self::oracle::*;
 
+// The byte value to use when breaking ECB. I used to use 0u8, but then
+// challenges like #13 end up URL-quoting it. So we choose a safer one.
+const PAD_BYTE: u8 = 'A' as u8;
+
 //
 // Challenge 9: Implement PKCS#7 padding.
 //
@@ -174,18 +178,17 @@ pub fn break_ecb_simple<O: Oracle>(oracle: &O) -> Vec<u8> {
 
   // (2) Detect that the function is using ECB. (You already know,
   // but do this step anyway.)
-  let repeat = "A".repeat(bsize * 2);
-  let ecb_data = oracle.encrypt_with_controlled(repeat.as_bytes()).unwrap();
+  let repeat = vec![PAD_BYTE; bsize * 2];
+  let ecb_data = oracle.encrypt_with_controlled(&repeat).unwrap();
   assert_eq!(ecb_data[..bsize], ecb_data[bsize..bsize * 2]);
 
   let mut deciphered = vec![];
   let paylen = oracle.encrypt_with_controlled(&[]).unwrap().len();
-  let craft_byte = 0u8; // Any value will do.
 
   for i in 0..paylen {
     // (3) Knowing the block size [and how many bytes you've uncovered],
     // craft an input block that is exactly 1 byte short.
-    let input = vec![craft_byte; bsize - (i % bsize) - 1];
+    let input = vec![PAD_BYTE; bsize - (i % bsize) - 1];
     if let Some(byte) = dictionary_attack(oracle, input, &deciphered) {
       deciphered.push(byte);
     } else {
@@ -234,7 +237,7 @@ fn oracle_block_size<O: Oracle>(oracle: &O) -> usize {
 
   loop {
     // This loop could hang if oracle misbehaves.
-    pfx.push(0);
+    pfx.push(PAD_BYTE);
     newlen = paylen(&pfx);
 
     if newlen > len {
@@ -278,7 +281,7 @@ impl<'a> Oracle for RndAesWrap<'a> {
     // Neuters the poisoning bytes by padding them up to a block boundary, and
     // stripping that amount after the call to AesOracle::encrypt_with_controlled.
     let padsize = self.block_size - self.poison_len % self.block_size;
-    let mut vec = vec![0; padsize];
+    let mut vec = vec![PAD_BYTE; padsize];
     vec.extend_from_slice(prefix);
     let ecb = self.oracle.encrypt_with_controlled(&vec);
     ecb.map(|mut v| {
@@ -313,7 +316,7 @@ pub fn oracle_poison_len(oracle: &RndAesOracle, bsize: usize) -> Option<usize> {
 
   let totlen = oracle.encrypt_with_controlled(&[]).unwrap().len();
   let maxblock = totlen / bsize;
-  let mut bytes = vec![0; bsize * 2]; // Ideally same pad byte as plaintext in tests.
+  let mut bytes = vec![PAD_BYTE; bsize * 2];
 
   for blk in 0..maxblock {
     bytes.truncate(bsize * 2);

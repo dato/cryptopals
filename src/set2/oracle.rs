@@ -83,7 +83,7 @@ mod test {
   #[test]
   #[ignore]
   fn oracle_poison_len() {
-    let plaintext = vec![0; 256]; // Ideally same pad byte as in oracle_poison_len() impl.
+    let plaintext = vec![set2::PAD_BYTE; 256];
     for len in 0..=256 {
       let oracle = RndAesOracle::new_with_poison_len(&plaintext, len);
       assert_eq!(
