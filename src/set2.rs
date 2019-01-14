@@ -11,7 +11,7 @@ pub use self::oracle::*;
 
 // The byte value to use when breaking ECB. I used to use 0u8, but then
 // challenges like #13 end up URL-quoting it. So we choose a safer one.
-const PAD_BYTE: u8 = 'A' as u8;
+const PAD_BYTE: u8 = b'A';
 
 //
 // Challenge 9: Implement PKCS#7 padding.
@@ -293,7 +293,7 @@ pub fn break_ecb_auth(auth: &EcbProfiles) -> Vec<u8> {
   // again according to the above writeup, for this to be feasible at
   // all PROFILE_FOR() SHOULD ONLY ESCAPE ‘=’ AND ‘&’. :-(
   let mut email_beg = vec![PAD_BYTE; block_size - "email=".len() % block_size];
-  let mut email_end = "admin".as_bytes().to_vec();
+  let mut email_end = b"admin".to_vec();
 
   pkcs7_pad(&mut email_end, block_size as u8);
   email_beg.extend_from_slice(&email_end);

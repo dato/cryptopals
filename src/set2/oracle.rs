@@ -95,10 +95,7 @@ impl EcbProfiles {
 
   /// Takes an address, returns the encrypted profile.
   pub fn profile_for(&self, email: &str) -> Vec<u8> {
-    let mut email = String::from(email);
-    email.replace("&", "");
-    email.replace("=", "");
-
+    let email = String::from(email).replace('&', "").replace('=', "");
     let query = format!("email={}&uid=10&role=user", email);
 
     let data = query.as_bytes();
