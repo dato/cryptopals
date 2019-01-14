@@ -49,7 +49,7 @@ pub fn break_xor_byte(data: &[u8]) -> XorResult {
     key: 0,
     result: String::new(),
   };
-  let mut dec_data = data.to_owned();
+  let mut dec_data = data.to_vec();
 
   for key in 0..=255 {
     // Compute the XOR decoding. We use an explicit loop and not map() plus

@@ -73,7 +73,7 @@ mod test {
     // Implement repeating-key XOR
     // https://cryptopals.com/sets/1/challenges/5
     let mut bytes =
-      b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".to_owned();
+      b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".to_vec();
     xor_cycle(&mut bytes, b"ICE");
     assert_eq!(
       HEX.encode(&bytes),

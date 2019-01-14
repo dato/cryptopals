@@ -37,8 +37,8 @@ impl AesOracle {
   }
 
   pub fn new_with_key(plaintext: &[u8], key: &[u8]) -> AesOracle {
-    let key = key.to_owned();
-    let plaintext = plaintext.to_owned();
+    let key = key.to_vec();
+    let plaintext = plaintext.to_vec();
     AesOracle { key, plaintext }
   }
 }

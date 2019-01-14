@@ -39,7 +39,7 @@ pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>
   let mut n = 0;
   let mut tot = 0;
   let mut buf = vec![0; data.len() + cipher.block_size()];
-  let mut prev = iv.to_owned();
+  let mut prev = iv.to_vec();
 
   for block in data.chunks(keylen) {
     assert_eq!(block.len(), keylen);
