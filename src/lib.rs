@@ -100,12 +100,15 @@ mod test {
     // AES in ECB mode.
     // https://cryptopals.com/sets/1/challenges/7
     let data = crate::read_base64("input/07");
-    let res = decrypt_aes_128_ecb(&data, b"YELLOW SUBMARINE").unwrap();
+    let key = b"YELLOW SUBMARINE";
+    let res = decrypt_aes_128_ecb(&data, key).unwrap();
     assert_eq!(res.len(), 2876);
     assert_eq!(
       String::from_utf8_lossy(&res).lines().last().unwrap(),
       "Play that funky music "
     );
+    let newdata = encrypt_aes_128_ecb(&res, key).unwrap();
+    assert_eq!(newdata, data);
   }
 
   #[test]

@@ -214,6 +214,18 @@ pub fn decrypt_aes_128_ecb(data: &[u8], key: &[u8]) -> Result<Vec<u8>, Box<Error
   Ok(ret)
 }
 
+pub fn encrypt_aes_128_ecb(data: &[u8], key: &[u8]) -> Result<Vec<u8>, Box<Error>> {
+  let cipher = Cipher::aes_128_ecb();
+  let mut crypt = Crypter::new(cipher, Mode::Encrypt, key, None)?;
+  let mut ret = vec![0; data.len() + cipher.block_size()];
+  let mut tot = 0;
+
+  tot += crypt.update(&data, &mut ret)?;
+  tot += crypt.finalize(&mut ret[tot..])?;
+  ret.truncate(tot);
+  Ok(ret)
+}
+
 //
 // Challenge 8: Detect AES in ECB mode.
 //

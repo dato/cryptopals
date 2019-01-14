@@ -98,15 +98,7 @@ impl EcbProfiles {
     let email = String::from(email).replace('&', "").replace('=', "");
     let query = format!("email={}&uid=10&role=user", email);
 
-    let data = query.as_bytes();
-    let cipher = Cipher::aes_128_ecb();
-    let mut crypt = Crypter::new(cipher, Mode::Encrypt, &self.key, None).unwrap();
-    let mut ret = vec![0; data.len() + cipher.block_size()];
-    let mut tot = 0;
-    tot += crypt.update(data, &mut ret).unwrap();
-    tot += crypt.finalize(&mut ret[tot..]).unwrap();
-    ret.truncate(tot);
-    ret
+    crate::set1::encrypt_aes_128_ecb(query.as_bytes(), &self.key).unwrap()
   }
 
   /// Takes an encrypted profile, searches for role=admin.
