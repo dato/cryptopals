@@ -27,15 +27,13 @@ pub fn hex_to_base64(hex: &str) -> Option<String> {
 //
 // Challenge 2: Fixed XOR.
 //
-/// Destructively applies XOR: a[i] ^= b[i].
-pub fn xor_zip(a: &mut [u8], b: &[u8]) -> bool {
-  if a.len() != b.len() {
-    return false;
-  }
+/// Destructively applies XOR: a[i] ^= b[i]. Slices must be equal size.
+pub fn xor_zip(a: &mut [u8], b: &[u8]) {
+  assert_eq!(a.len(), b.len());
+
   for (i, x) in a.iter_mut().enumerate() {
     *x ^= b[i];
   }
-  true
 }
 
 //

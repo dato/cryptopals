@@ -1,6 +1,5 @@
 use openssl::symm::{Cipher, Crypter, Mode};
 use rand::{random, Rng};
-use simple_error::bail;
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -45,12 +44,7 @@ pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>
     assert_eq!(block.len(), keylen);
 
     n += crypt.update(block, &mut buf[tot..])?;
-
-    // Must check xor_zip() return value because it does nothing
-    // if the slices are different in size.
-    if !crate::set1::xor_zip(&mut buf[tot..n], &prev) {
-      bail!("xor_zip() returned false");
-    }
+    crate::set1::xor_zip(&mut buf[tot..n], &prev);
 
     // This hopefully doesn't allocate.
     prev.truncate(0);

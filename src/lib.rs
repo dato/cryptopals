@@ -44,7 +44,7 @@ mod test {
     // https://cryptopals.com/sets/1/challenges/2
     let mut a = HEX.decode(b"1c0111001f010100061a024b53535009181c").unwrap();
     let b = HEX.decode(b"686974207468652062756c6c277320657965").unwrap();
-    assert!(xor_zip(&mut a, &b));
+    xor_zip(&mut a, &b);
     assert_eq!(HEX.encode(&a), "746865206b696420646f6e277420706c6179");
   }
 
