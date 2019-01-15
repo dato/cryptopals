@@ -25,6 +25,14 @@ pub struct EcbAuth {
   key: Vec<u8>,
 }
 
+// For challenge 16: encrypts userdata in a query string.
+pub struct CbcAuth {
+  iv: Vec<u8>,
+  key: Vec<u8>,
+  prefix: &'static str,
+  suffix: &'static str,
+}
+
 /*
  * Implementations follow.
  *
@@ -124,6 +132,37 @@ impl EcbAuth {
       }
     }
     false
+  }
+}
+
+impl CbcAuth {
+  pub fn new() -> CbcAuth {
+    let iv = rand::random::<[u8; 16]>().to_vec();
+    let key = rand::random::<[u8; 16]>().to_vec();
+    let prefix = "comment1=cooking%20MCs;userdata=";
+    let suffix = ";comment2=%20like%20a%20pound%20of%20bacon";
+    CbcAuth {
+      iv,
+      key,
+      prefix,
+      suffix,
+    }
+  }
+
+  /// Takes userdata as a strings and encrypts it with the rest of the query.
+  pub fn encrypt_userdata(&self, userdata: &str) -> Vec<u8> {
+    let data = userdata.replace(';', "%3B").replace('=', "%3D");
+    let query = format!("{}{}{}", self.prefix, data, self.suffix);
+    super::encrypt_aes_128_cbc(query.as_bytes(), &self.key, &self.iv).unwrap()
+  }
+
+  /// Takes encrypted query and checks if ‘admin’ param is true.
+  pub fn is_admin_true(&self, ciphertext: &[u8]) -> bool {
+    let bytes = super::decrypt_aes_128_cbc(ciphertext, &self.key, &self.iv).unwrap();
+    // We're not verifying that the plaintext is a valid query string. In a real
+    // world scenario, we might—making the attack unfeasible?
+    let query = String::from_utf8_lossy(&bytes);
+    query.find(";admin=true;").is_some()
   }
 }
 

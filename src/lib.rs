@@ -213,4 +213,14 @@ mod test {
     assert_eq!(pkcs7_padding_len(b"ICE ICE BABY\x00"), None);
     assert_eq!(pkcs7_padding_len(b""), Some(0));
   }
+
+  #[test]
+  fn challenge_16() {
+    // Challenge 16: CBC bitflipping attacks.
+    // https://cryptopals.com/sets/2/challenges/16
+    let cbc = CbcAuth::new();
+    let query = cbc.encrypt_userdata("hah;admin=true;bye=");
+    assert!(!cbc.is_admin_true(&query));
+    assert!(cbc.is_admin_true(&break_cbc_auth(&cbc)));
+  }
 }

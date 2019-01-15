@@ -454,3 +454,28 @@ pub fn pkcs7_padding_len(buf: &[u8]) -> Option<usize> {
     }
   }
 }
+
+//
+// Challenge 16: CBC bitflipping attacks.
+//
+pub fn break_cbc_auth(cbc: &CbcAuth) -> Vec<u8> {
+  // So the Crypto101 book (https://crypto101.io) only talks (§7.7)
+  // about using a very long string as userdata, and then flipping
+  // there; NOT caring about the garbage that will result (see the lack
+  // of validation in CbcAuth::is_admin_true).
+  let fill = "Z".repeat(128);
+  let mut ciphertext = cbc.encrypt_userdata(&fill);
+
+  // To obtain the desired plaintext, we need to XOR the ciphertext with
+  // WANTED ^ FILL. We're using 128 bytes of fill, so we can comfortably
+  // do the bit flipping in block 5 (by changing block 4 in the ciphertext).
+  let mut wanted = b";admin=true;".to_vec();
+  let bsize = 16;
+  let wlen = wanted.len();
+  let beg = bsize * 4;
+  let end = beg + wlen;
+
+  crate::set1::xor_zip(&mut wanted, &fill.as_bytes()[..wlen]);
+  crate::set1::xor_zip(&mut ciphertext[beg..end], &wanted);
+  ciphertext
+}
