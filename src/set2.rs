@@ -28,8 +28,9 @@ pub fn pkcs7_pad(data: &mut Vec<u8>, block_len: u8) {
 pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>, Box<Error>> {
   let keylen = key.len();
 
-  assert_eq!(keylen, iv.len());
-  assert_eq!(0, data.len() % keylen);
+  assert!(keylen < 256); // ??
+  assert_eq!(iv.len(), keylen);
+  assert_eq!(data.len() % keylen, 0);
 
   let cipher = Cipher::aes_128_ecb();
   let mut crypt = Crypter::new(cipher, Mode::Decrypt, key, None)?;
@@ -60,6 +61,49 @@ pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>
   if let Some(n) = pkcs7_padding_len(&buf) {
     buf.truncate(buf.len() - n);
   }
+
+  Ok(buf)
+}
+
+/// Encrypts AES-128-CBC just using ECB mode as primitive.
+pub fn encrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>, Box<Error>> {
+  let keylen = key.len();
+  let mut padded;
+  let mut data = data; // Shorten lifetime.
+
+  assert!(keylen < 256); // ??
+  assert_eq!(keylen, iv.len());
+
+  if data.len() % keylen > 0 {
+    // Need to PKCS#7 pad
+    padded = data.to_vec();
+    pkcs7_pad(&mut padded, key.len() as u8);
+    data = &padded;
+  }
+  assert_eq!(data.len() % keylen, 0);
+
+  let cipher = Cipher::aes_128_ecb();
+  let mut crypt = Crypter::new(cipher, Mode::Encrypt, key, None)?;
+  crypt.pad(false);
+
+  let mut n = 0;
+  let mut tot = 0;
+  let mut buf = vec![0; data.len() + cipher.block_size()];
+  let mut prev = iv.to_vec();
+
+  for block in data.chunks(keylen) {
+    assert_eq!(block.len(), keylen);
+
+    crate::set1::xor_zip(&mut prev, block);
+    n += crypt.update(&prev, &mut buf[tot..])?;
+
+    prev.truncate(0);
+    prev.extend_from_slice(&buf[tot..n]);
+    tot = n;
+  }
+
+  n += crypt.finalize(&mut buf[tot..])?;
+  buf.truncate(n);
 
   Ok(buf)
 }
@@ -403,4 +447,29 @@ pub fn pkcs7_padding_len(buf: &[u8]) -> Option<usize> {
       }
     }
   }
+}
+
+//
+// Challenge 16: CBC bitflipping attacks.
+//
+pub fn break_cbc_auth(cbc: &CbcAuth) -> Vec<u8> {
+  // So the Crypto101 book (https://crypto101.io) only talks (§7.7)
+  // about using a very long string as userdata, and then flipping
+  // there; NOT caring about the garbage that will result (see the lack
+  // of validation in CbcAuth::is_admin_true).
+  let fill = "Z".repeat(128);
+  let mut ciphertext = cbc.encrypt_userdata(&fill);
+
+  // To obtain the desired plaintext, we need to XOR the ciphertext with
+  // WANTED ^ FILL. We're using 128 bytes of fill, so we can comfortably
+  // do the bit flipping in block 5 (by changing block 4 in the ciphertext).
+  let mut wanted = b";admin=true;".to_vec();
+  let bsize = 16;
+  let wlen = wanted.len();
+  let beg = bsize * 4;
+  let end = beg + wlen;
+
+  crate::set1::xor_zip(&mut wanted, &fill.as_bytes()[..wlen]);
+  crate::set1::xor_zip(&mut ciphertext[beg..end], &wanted);
+  ciphertext
 }
