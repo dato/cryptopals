@@ -1,4 +1,4 @@
-pub use self::oracles::*;
+use self::challenge17::*;
 use crate::set2::pkcs7_padding_len;
 
 //
@@ -91,7 +91,8 @@ fn padding_length(oracle: &PaddingOracle, cipher: &[u8], hint: u8) -> u8 {
   0
 }
 
-mod oracles {
+mod challenge17 {
+  use super::break_padding_oracle;
   use crate::set2::*;
 
   use data_encoding::BASE64;
@@ -156,4 +157,11 @@ mod oracles {
     "MDAwMDA4b2xsaW4nIGluIG15IGZpdmUgcG9pbnQgb2g=",
     "MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93",
   ];
+
+  #[test]
+  fn test() {
+    let oracle = PaddingOracle::new();
+    let plaintext = break_padding_oracle(&oracle);
+    assert!(plaintext.starts_with(b"00000")); // XXX
+  }
 }
