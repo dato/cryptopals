@@ -6,9 +6,9 @@ use crate::set2::pkcs7_padding_len;
 //
 pub fn break_padding_oracle(oracle: &PaddingOracle) -> Vec<u8> {
   let bsize = 16;
-  let (ciphertext, iv) = oracle.encrypt_some();
+  let ciphertext = oracle.encrypt_some();
 
-  let mut prev = iv;
+  let mut prev = oracle.iv().to_vec();
   let mut plaintext = vec![];
   assert_eq!(ciphertext.len() % bsize, 0);
 
@@ -113,17 +113,18 @@ mod oracles {
       PaddingOracle { key, iv }
     }
 
+    pub fn iv(&self) -> &[u8] {
+      &self.iv
+    }
+
     // Returns the ciphertext and IV.
-    pub fn encrypt_some(&self) -> (Vec<u8>, Vec<u8>) {
+    pub fn encrypt_some(&self) -> Vec<u8> {
       // FIXME: Challenge says “pick one of the 10 strings at random”, but
       // this hinders testeability.
       let mut rng = rand::thread_rng();
       let base64 = C17_STR.choose(&mut rng).unwrap().as_bytes();
       let plaintext = BASE64.decode(base64).unwrap();
-      (
-        encrypt_aes_128_cbc(&plaintext, &self.key, &self.iv).unwrap(),
-        self.iv.clone(),
-      )
+      encrypt_aes_128_cbc(&plaintext, &self.key, &self.iv).unwrap()
     }
 
     pub fn has_valid_padding(&self, ciphertext: &[u8]) -> bool {
