@@ -599,11 +599,11 @@ mod challenge14 {
   impl RndAesOracle {
     pub fn new(plaintext: &[u8]) -> RndAesOracle {
       let mut rng = rand::thread_rng();
-      RndAesOracle::new_with_poison_len(plaintext, rng.gen_range(3, 16))
+      RndAesOracle::with_poison_len(plaintext, rng.gen_range(3, 16))
     }
 
     // This constructor is for ease of testing oracle_poison_len() below.
-    fn new_with_poison_len(plaintext: &[u8], len: usize) -> RndAesOracle {
+    fn with_poison_len(plaintext: &[u8], len: usize) -> RndAesOracle {
       let mut rng = rand::thread_rng();
       let mut poison = vec![0; len];
       let oracle = AesOracle::new(plaintext);
@@ -639,7 +639,7 @@ mod challenge14 {
   fn test_oracle_poison_len() {
     let plaintext = vec![super::PAD_BYTE; 256];
     for len in 0..=256 {
-      let oracle = RndAesOracle::new_with_poison_len(&plaintext, len);
+      let oracle = RndAesOracle::with_poison_len(&plaintext, len);
       assert_eq!(
         super::oracle_poison_len(&oracle, 16).unwrap(),
         oracle.poison.len()
