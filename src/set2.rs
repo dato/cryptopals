@@ -14,6 +14,7 @@ const PAD_BYTE: u8 = b'A';
 
 //
 // Challenge 9: Implement PKCS#7 padding.
+// https://cryptopals.com/sets/2/challenges/9
 //
 pub fn pkcs7_pad(data: &mut Vec<u8>, block_len: u8) {
   let block_len = block_len as usize;
@@ -21,8 +22,24 @@ pub fn pkcs7_pad(data: &mut Vec<u8>, block_len: u8) {
   data.extend(iter::repeat(pad_byte as u8).take(pad_byte));
 }
 
+mod challenge09 {
+  #[test]
+  fn test() {
+    let mut a = b"01".to_vec();
+    let mut b = b"ABC".to_vec();
+    let mut c = b"YELLOW".to_vec();
+    super::pkcs7_pad(&mut a, 2);
+    super::pkcs7_pad(&mut b, 6);
+    super::pkcs7_pad(&mut c, 10);
+    assert_eq!(a, b"01\x02\x02");
+    assert_eq!(b, b"ABC\x03\x03\x03");
+    assert_eq!(c, b"YELLOW\x04\x04\x04\x04");
+  }
+}
+
 //
 // Challenge 10: Implement CBC mode.
+// https://cryptopals.com/sets/2/challenges/10
 //
 /// Decrypts AES-128-CBC just using ECB mode as primitive.
 pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>, Box<Error>> {
@@ -108,8 +125,26 @@ pub fn encrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>
   Ok(buf)
 }
 
+mod challenge10 {
+  #[test]
+  fn test() {
+    let data = crate::read_base64("input/10");
+    let key = b"YELLOW SUBMARINE";
+    let iv = vec![0; 16];
+    let res = super::decrypt_aes_128_cbc(&data, key, &iv).unwrap();
+    assert_eq!(
+      String::from_utf8_lossy(&res).lines().last().unwrap(),
+      "Play that funky music "
+    );
+    assert_eq!(res.len(), 2876);
+    let newdata = super::encrypt_aes_128_cbc(&res, key, &iv).unwrap();
+    assert_eq!(newdata, data);
+  }
+}
+
 //
 // Challenge 11: An ECB/CBC detection oracle.
+// https://cryptopals.com/sets/2/challenges/11
 //
 type RandomEnc = fn(&[u8]) -> Result<Ciphertext, Box<Error>>;
 
@@ -205,8 +240,21 @@ fn aes_random_enc(plaintext: &[u8]) -> Result<Ciphertext, Box<Error>> {
   })
 }
 
+mod challenge11 {
+  #[test]
+  fn test() {
+    for _ in 0..10 {
+      let result = super::discern_ecb_cbc(None);
+      if result.guessed != result.actual {
+        assert!(false, "discern_ecb_cbc() failed");
+      }
+    }
+  }
+}
+
 //
 // Challenge 12: Byte-at-a-time ECB decryption (Simple).
+// https://cryptopals.com/sets/2/challenges/12
 //
 pub fn break_ecb_simple(oracle: &impl Oracle) -> Vec<u8> {
   // (1) Discover the block size of the cipher. (You know it,
@@ -285,8 +333,30 @@ fn oracle_block_size(oracle: &impl Oracle) -> usize {
   }
 }
 
+mod challenge12 {
+  use super::AesOracle;
+  use crate::BASE64_NL;
+  use indoc::indoc;
+
+  #[test]
+  fn test() {
+    let plaintext = BASE64_NL
+      .decode(indoc!(
+        b"
+              Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg
+              aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq
+              dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg
+              YnkK"
+      ))
+      .unwrap();
+    let oracle = AesOracle::new(&plaintext);
+    assert_eq!(super::break_ecb_simple(&oracle), plaintext);
+  }
+}
+
 //
 // Challenge 13: ECB cut-and-paste.
+// https://cryptopals.com/sets/2/challenges/13
 //
 /// Returns a ciphertext that includes ‘role=admin’.
 pub fn break_ecb_auth(auth: &EcbAuth) -> Vec<u8> {
@@ -341,8 +411,21 @@ pub fn break_ecb_auth(auth: &EcbAuth) -> Vec<u8> {
   prefix
 }
 
+mod challenge13 {
+  use super::EcbAuth;
+
+  #[test]
+  fn test() {
+    let auth = EcbAuth::new();
+    let jane = auth.profile_for("jane@hackers.com");
+    assert!(!auth.is_role_admin(&jane));
+    assert!(auth.is_role_admin(&super::break_ecb_auth(&auth)));
+  }
+}
+
 //
 // Challenge 14: Byte-at-a-time ECB decryption (Harder).
+// https://cryptopals.com/sets/2/challenges/14
 //
 pub fn break_ecb_hard(oracle: &RndAesOracle) -> Vec<u8> {
   // We can use break_ecb_simple() if we wrap RndAesOracle with a
@@ -428,8 +511,30 @@ pub fn oracle_poison_len(oracle: &impl Oracle, bsize: usize) -> Option<usize> {
   None
 }
 
+mod challenge14 {
+  use super::RndAesOracle;
+  use crate::BASE64_NL;
+  use indoc::indoc;
+
+  #[test]
+  fn test() {
+    let plaintext = BASE64_NL
+      .decode(indoc!(
+        b"
+              Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg
+              aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq
+              dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg
+              YnkK"
+      ))
+      .unwrap();
+    let oracle = RndAesOracle::new(&plaintext);
+    assert_eq!(super::break_ecb_hard(&oracle), plaintext);
+  }
+}
+
 //
 // Challenge 15: PKCS#7 padding validation.
+// https://cryptopals.com/sets/2/challenges/15
 //
 // Returns the length of PKCS#7 padding, or None if buf is not PKCS#7-padded.
 pub fn pkcs7_padding_len(buf: &[u8]) -> Option<usize> {
@@ -449,8 +554,29 @@ pub fn pkcs7_padding_len(buf: &[u8]) -> Option<usize> {
   }
 }
 
+mod challenge15 {
+  #[test]
+  fn test() {
+    assert_eq!(
+      super::pkcs7_padding_len(b"ICE ICE BABY\x04\x04\x04\x04"),
+      Some(4)
+    );
+    assert_eq!(
+      super::pkcs7_padding_len(b"ICE ICE BABY\x05\x05\x05\x05"),
+      None
+    );
+    assert_eq!(
+      super::pkcs7_padding_len(b"ICE ICE BABY\x01\x02\x03\x04"),
+      None
+    );
+    assert_eq!(super::pkcs7_padding_len(b"ICE ICE BABY\x00"), None);
+    assert_eq!(super::pkcs7_padding_len(b""), Some(0));
+  }
+}
+
 //
 // Challenge 16: CBC bitflipping attacks.
+// https://cryptopals.com/sets/2/challenges/16
 //
 pub fn break_cbc_auth(cbc: &CbcAuth) -> Vec<u8> {
   // So the Crypto101 book (https://crypto101.io) only talks (§7.7)
@@ -472,4 +598,16 @@ pub fn break_cbc_auth(cbc: &CbcAuth) -> Vec<u8> {
   crate::set1::xor_zip(&mut wanted, &fill.as_bytes()[..wlen]);
   crate::set1::xor_zip(&mut ciphertext[beg..end], &wanted);
   ciphertext
+}
+
+mod challenge16 {
+  use super::CbcAuth;
+
+  #[test]
+  fn test() {
+    let cbc = CbcAuth::new();
+    let query = cbc.encrypt_userdata("hah;admin=true;bye=");
+    assert!(!cbc.is_admin_true(&query));
+    assert!(cbc.is_admin_true(&super::break_cbc_auth(&cbc)));
+  }
 }
