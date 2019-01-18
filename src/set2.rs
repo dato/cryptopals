@@ -1,5 +1,4 @@
 use openssl::symm::{Cipher, Crypter, Mode};
-use rand::{random, Rng};
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -143,106 +142,100 @@ mod challenge10 {
 // Challenge 11: An ECB/CBC detection oracle.
 // https://cryptopals.com/sets/2/challenges/11
 //
-type RandomEnc = fn(&[u8]) -> Result<Ciphertext, Box<Error>>;
+use self::challenge11::*;
 
-pub struct Ciphertext {
-  cipher: Cipher,
-  ciphertext: Vec<u8>,
-}
-
-pub struct OracleGuess {
-  pub actual: Cipher,
-  pub guessed: Cipher,
-}
-
-// Guesses if an oracle encrypted in ECB or CBC mode.
-// Returns a tuple (guessed_cipher, actual_cipher) so that
-// accuracy can be verified.
-pub fn discern_ecb_cbc(oracle: Option<RandomEnc>) -> OracleGuess {
+/// Guesses if a ciphertext is encrypted in ECB or CBC mode.
+pub fn discern_ecb_cbc() -> OracleGuess {
   let input = "A".repeat(1024); // ¯\_(ツ)_/¯
-  let oracle = oracle.unwrap_or(aes_random_enc);
-  let result = oracle(input.as_bytes()).unwrap();
+  let mut result = aes_random_enc(input.as_bytes()).unwrap();
   let count = crate::set1::max_repeat_count(&result.ciphertext, 16);
 
   if count >= 10 {
-    OracleGuess {
-      actual: result.cipher,
-      guessed: Cipher::aes_128_ecb(),
-    }
+    result.guess = Some(Cipher::aes_128_ecb());
   } else {
-    OracleGuess {
-      actual: result.cipher,
-      guessed: Cipher::aes_128_cbc(),
-    }
-  }
-}
-
-// This function generates a random key, and encrypts data with it. Half
-// of the time it will use AES-128-ECB, the other half AES-128-CBC. It's
-// the “encryption oracle” from the challenge writeup.
-//
-// Returns the ciphertext _and_ the used cipher:
-fn aes_random_enc(plaintext: &[u8]) -> Result<Ciphertext, Box<Error>> {
-  // (1) Generate a random key and encrypt under it.
-  let mut rng = rand::thread_rng();
-  let key = random::<[u8; 16]>();
-
-  // (2) Have the function choose to encrypt under ECB 1/2 the time, and under
-  //     CBC the other half.
-  let cipher;
-  let iv_arr;
-  let iv: Option<&[u8]>; // Specify type to easily coerce array to slice below.
-
-  if rng.gen() {
-    iv = None;
-    cipher = Cipher::aes_128_ecb();
-  } else {
-    cipher = Cipher::aes_128_cbc();
-    iv_arr = random::<[u8; 16]>();
-    iv = Some(&iv_arr);
+    result.guess = Some(Cipher::aes_128_cbc());
   }
 
-  // (3) Have the function append 5-10 bytes (count chosen randomly)
-  // before the plaintext and 5-10 bytes after the plaintext.
-  let n = rng.gen_range(5, 11);
-  let m = rng.gen_range(5, 11);
-  let mid = n + plaintext.len();
-  let mut data = Vec::with_capacity(mid + m);
-
-  // (3a) Add the ‘n’ preamble bytes.
-  data.resize(n, 0);
-  rng.fill(&mut data[..]);
-
-  // (3b) Add the actual plaintext.
-  data.extend_from_slice(plaintext);
-  assert_eq!(data.len(), mid);
-
-  // (3c) Add the ‘m’ postamble bytes.
-  data.resize(mid + m, 0);
-  rng.fill(&mut data[mid..]);
-
-  // (4) Profit.
-  let mut n = 0;
-  let mut buf = vec![0; data.len() + cipher.block_size()];
-  let mut crypt = Crypter::new(cipher, Mode::Encrypt, &key, iv)?;
-
-  n += crypt.update(&data, &mut buf)?;
-  n += crypt.finalize(&mut buf[n..])?;
-
-  buf.truncate(n);
-
-  Ok(Ciphertext {
-    cipher,
-    ciphertext: buf,
-  })
+  result
 }
 
 mod challenge11 {
+  use openssl::symm::{Cipher, Crypter, Mode};
+  use rand::{random, Rng};
+  use std::error::Error;
+
+  pub struct OracleGuess {
+    actual: Cipher,
+    pub ciphertext: Vec<u8>,
+    pub guess: Option<Cipher>,
+  }
+
+  // This function generates a random key, and encrypts data with it. Half
+  // of the time it will use AES-128-ECB, the other half AES-128-CBC. It's
+  // the “encryption oracle” from the challenge writeup.
+  //
+  // Returns the ciphertext _and_ the used cipher:
+  pub fn aes_random_enc(plaintext: &[u8]) -> Result<OracleGuess, Box<Error>> {
+    // (1) Generate a random key and encrypt under it.
+    let mut rng = rand::thread_rng();
+    let key = random::<[u8; 16]>();
+
+    // (2) Have the function choose to encrypt under ECB 1/2 the time, and under
+    //     CBC the other half.
+    let cipher;
+    let iv_arr;
+    let iv: Option<&[u8]>; // Specify type to easily coerce array to slice below.
+
+    if rng.gen() {
+      iv = None;
+      cipher = Cipher::aes_128_ecb();
+    } else {
+      cipher = Cipher::aes_128_cbc();
+      iv_arr = random::<[u8; 16]>();
+      iv = Some(&iv_arr);
+    }
+
+    // (3) Have the function append 5-10 bytes (count chosen randomly)
+    // before the plaintext and 5-10 bytes after the plaintext.
+    let n = rng.gen_range(5, 11);
+    let m = rng.gen_range(5, 11);
+    let mid = n + plaintext.len();
+    let mut data = Vec::with_capacity(mid + m);
+
+    // (3a) Add the ‘n’ preamble bytes.
+    data.resize(n, 0);
+    rng.fill(&mut data[..]);
+
+    // (3b) Add the actual plaintext.
+    data.extend_from_slice(plaintext);
+    assert_eq!(data.len(), mid);
+
+    // (3c) Add the ‘m’ postamble bytes.
+    data.resize(mid + m, 0);
+    rng.fill(&mut data[mid..]);
+
+    // (4) Profit.
+    let mut n = 0;
+    let mut buf = vec![0; data.len() + cipher.block_size()];
+    let mut crypt = Crypter::new(cipher, Mode::Encrypt, &key, iv)?;
+
+    n += crypt.update(&data, &mut buf)?;
+    n += crypt.finalize(&mut buf[n..])?;
+
+    buf.truncate(n);
+
+    Ok(OracleGuess {
+      guess: None,
+      actual: cipher,
+      ciphertext: buf,
+    })
+  }
+
   #[test]
   fn test() {
     for _ in 0..10 {
-      let result = super::discern_ecb_cbc(None);
-      if result.guessed != result.actual {
+      let result = super::discern_ecb_cbc();
+      if result.actual != result.guess.unwrap() {
         assert!(false, "discern_ecb_cbc() failed");
       }
     }
