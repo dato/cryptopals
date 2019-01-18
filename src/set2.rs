@@ -343,14 +343,10 @@ mod challenge12 {
   impl AesOracle {
     pub fn new(plaintext: &[u8]) -> AesOracle {
       let key = rand::random::<[u8; 16]>();
-      AesOracle::new_with_key(plaintext, &key)
-    }
-
-    // XXX
-    fn new_with_key(plaintext: &[u8], key: &[u8]) -> AesOracle {
-      let key = key.to_vec();
-      let plaintext = plaintext.to_vec();
-      AesOracle { key, plaintext }
+      AesOracle {
+        key: key.to_vec(),
+        plaintext: plaintext.to_vec(),
+      }
     }
   }
 
