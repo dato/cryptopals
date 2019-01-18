@@ -294,3 +294,124 @@ impl<T: PartialOrd> Ord for ImplOrd<T> {
     self.partial_cmp(other).unwrap() // Will panic on failure.
   }
 }
+
+mod challenge01 {
+  #[test]
+  fn test() {
+    // Convert hex to base64.
+    // https://cryptopals.com/sets/1/challenges/1
+    let hex = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
+    assert_eq!(
+      super::hex_to_base64(hex).unwrap(),
+      "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t"
+    );
+  }
+}
+
+mod challenge02 {
+  use data_encoding::HEXLOWER_PERMISSIVE as HEX;
+
+  #[test]
+  fn test() {
+    // Fixed XOR.
+    // https://cryptopals.com/sets/1/challenges/2
+    let mut a = HEX.decode(b"1c0111001f010100061a024b53535009181c").unwrap();
+    let b = HEX.decode(b"686974207468652062756c6c277320657965").unwrap();
+    super::xor_zip(&mut a, &b);
+    assert_eq!(HEX.encode(&a), "746865206b696420646f6e277420706c6179");
+  }
+}
+
+mod challenge03 {
+  use data_encoding::HEXLOWER_PERMISSIVE as HEX;
+
+  #[test]
+  fn test() {
+    // Single-byte XOR cipher
+    // https://cryptopals.com/sets/1/challenges/3
+    let bytes = HEX
+      .decode(b"1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
+      .unwrap();
+    assert_eq!(
+      super::break_xor_byte(&bytes).result,
+      "Cooking MC's like a pound of bacon"
+    );
+  }
+}
+
+mod challenge04 {
+  #[test]
+  fn test() {
+    // Detect single-character XOR
+    // https://cryptopals.com/sets/1/challenges/4
+    assert_eq!(
+      super::find_xor_byte("input/04"),
+      "Now that the party is jumping\n"
+    );
+  }
+}
+
+mod challenge05 {
+  use data_encoding::HEXLOWER_PERMISSIVE as HEX;
+
+  #[test]
+  fn test() {
+    // Implement repeating-key XOR
+    // https://cryptopals.com/sets/1/challenges/5
+    let mut bytes =
+      b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".to_vec();
+    super::xor_cycle(&mut bytes, b"ICE");
+    assert_eq!(
+      HEX.encode(&bytes),
+      concat!(
+        "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272",
+        "a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"
+      )
+    );
+  }
+}
+
+mod challenge06 {
+  #[test]
+  fn test() {
+    // Break repeating-key XOR
+    // https://cryptopals.com/sets/1/challenges/6
+    assert_eq!(
+      super::hamming_distance(b"this is a test", b"wokka wokka!!!"),
+      37
+    );
+    assert_eq!(
+      super::break_xor_cycle(&crate::read_base64("input/06")),
+      b"Terminator X: Bring the noise"
+    );
+  }
+}
+
+mod challenge07 {
+  #[test]
+  fn test() {
+    // AES in ECB mode.
+    // https://cryptopals.com/sets/1/challenges/7
+    let data = crate::read_base64("input/07");
+    let key = b"YELLOW SUBMARINE";
+    let res = super::decrypt_aes_128_ecb(&data, key).unwrap();
+    assert_eq!(res.len(), 2876);
+    assert_eq!(
+      String::from_utf8_lossy(&res).lines().last().unwrap(),
+      "Play that funky music "
+    );
+    let newdata = super::encrypt_aes_128_ecb(&res, key).unwrap();
+    assert_eq!(newdata, data);
+  }
+}
+
+mod challenge08 {
+  #[test]
+  fn test() {
+    // Detect AES in ECB mode.
+    // https://cryptopals.com/sets/1/challenges/8
+    assert_eq!(
+      super::find_aes_ecb("input/08").unwrap(),
+      "d880619740a8a19b7840a8a31c810a3d08649af70dc06f4fd5d2d69c744cd283e2dd052f6b641dbf9d11b0348542bb5708649af70dc06f4fd5d2d69c744cd2839475c9dfdbc1d46597949d9c7e82bf5a08649af70dc06f4fd5d2d69c744cd28397a93eab8d6aecd566489154789a6b0308649af70dc06f4fd5d2d69c744cd283d403180c98c8f6db1f2a3f9c4040deb0ab51b29933f2c123c58386b06fba186a");
+  }
+}
