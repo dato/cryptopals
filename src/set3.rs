@@ -3,6 +3,7 @@ use crate::set2::pkcs7_padding_len;
 
 //
 // Challenge 17: The CBC padding oracle.
+// https://cryptopals.com/sets/3/challenges/17
 //
 pub fn break_padding_oracle(oracle: &PaddingOracle) -> Vec<u8> {
   let bsize = 16;
@@ -31,9 +32,12 @@ fn break_padding_block(oracle: &PaddingOracle, block: &[u8], iv: &[u8]) -> Vec<u
 
   // Modify cipher[..bsize] to generate valid paddings of increasing
   // length. Variable ‘plen’ is our padding length so far.
+  let mut p = 0;
   let mut plen = 0;
 
-  for i in (0..bsize).rev() {
+  while p < bsize {
+    let i = bsize - p - 1;
+
     // Increase padding byte for all affected bytes. (No-op first time.)
     for j in 1..=plen {
       cipher[i + j as usize] ^= plen ^ (plen + 1);
@@ -43,10 +47,23 @@ fn break_padding_block(oracle: &PaddingOracle, block: &[u8], iv: &[u8]) -> Vec<u
       cipher[i] += 1; // Panics by overflow if oracle misbehaves.
     }
 
-    plen += 1; // FIXME: Need to deal with strikes of luck later.
-    assert_eq!(padding_length(oracle, &cipher, plen), plen);
+    let prev = plen;
+    plen = padding_length(oracle, &cipher, prev + 1);
 
-    plaintext.push(plen ^ cipher[i] ^ iv[i]); // plen is also padding byte.
+    if plen != prev + 1 {
+      assert_eq!(p, 0); // Should only happen in the first round.
+      println!("Went from padding {} to padding {} in one step", prev, plen);
+    }
+
+    // Normally we would have just one byte to cecipher, but we need
+    // a loop in case the padding was longer than expected.
+    let diff = (plen - prev) as usize;
+
+    for j in 0..diff {
+      plaintext.push(plen ^ cipher[i - j] ^ iv[i - j]); // plen is also padding byte.
+    }
+
+    p += diff;
   }
 
   // Reverse plaintext, because ciphertext was processed latest bytes first.
@@ -114,6 +131,17 @@ mod challenge17 {
       PaddingOracle { key, iv }
     }
 
+    // Hardcodes key and plaintext to force a padding longer than one byte. This
+    // allows us to verify that this case, albeit rare, is handled correctly.
+    // NOTE: break_padding_oracle() initializes the random block with zeroes;
+    // anything different will break this. (An appropriate plaintext is also
+    // provided.)
+    fn with_lucky_padding() -> (PaddingOracle, &'static [u8]) {
+      let iv = (0..16).collect();
+      let key = (16..32).collect();
+      (PaddingOracle { key, iv }, b"ABCDEFGHIJKLMN\x0CP")
+    }
+
     pub fn iv(&self) -> &[u8] {
       &self.iv
     }
@@ -125,6 +153,10 @@ mod challenge17 {
       let mut rng = rand::thread_rng();
       let base64 = C17_STR.choose(&mut rng).unwrap().as_bytes();
       let plaintext = BASE64.decode(base64).unwrap();
+      encrypt_aes_128_cbc(&plaintext, &self.key, &self.iv).unwrap()
+    }
+
+    fn encrypt_this(&self, plaintext: &[u8]) -> Vec<u8> {
       encrypt_aes_128_cbc(&plaintext, &self.key, &self.iv).unwrap()
     }
 
@@ -163,5 +195,16 @@ mod challenge17 {
     let oracle = PaddingOracle::new();
     let plaintext = break_padding_oracle(&oracle);
     assert!(plaintext.starts_with(b"00000")); // XXX
+  }
+
+  #[test]
+  fn test_long_padding() {
+    let (oracle, plaintext) = PaddingOracle::with_lucky_padding();
+    let ciphertext = oracle.encrypt_this(plaintext);
+
+    assert_eq!(
+      super::break_padding_block(&oracle, &ciphertext, &oracle.iv()),
+      plaintext
+    );
   }
 }
