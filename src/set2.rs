@@ -1,12 +1,8 @@
 use openssl::symm::{Cipher, Crypter, Mode};
-use rand::{random, Rng};
 
 use std::collections::HashMap;
 use std::error::Error;
 use std::iter;
-
-mod oracle;
-pub use self::oracle::*;
 
 // The byte value to use when breaking ECB. I used to use 0u8, but then
 // challenges like #13 end up URL-quoting it. So we choose a safer one.
@@ -14,6 +10,7 @@ const PAD_BYTE: u8 = b'A';
 
 //
 // Challenge 9: Implement PKCS#7 padding.
+// https://cryptopals.com/sets/2/challenges/9
 //
 pub fn pkcs7_pad(data: &mut Vec<u8>, block_len: u8) {
   let block_len = block_len as usize;
@@ -21,8 +18,24 @@ pub fn pkcs7_pad(data: &mut Vec<u8>, block_len: u8) {
   data.extend(iter::repeat(pad_byte as u8).take(pad_byte));
 }
 
+mod challenge09 {
+  #[test]
+  fn test() {
+    let mut a = b"01".to_vec();
+    let mut b = b"ABC".to_vec();
+    let mut c = b"YELLOW".to_vec();
+    super::pkcs7_pad(&mut a, 2);
+    super::pkcs7_pad(&mut b, 6);
+    super::pkcs7_pad(&mut c, 10);
+    assert_eq!(a, b"01\x02\x02");
+    assert_eq!(b, b"ABC\x03\x03\x03");
+    assert_eq!(c, b"YELLOW\x04\x04\x04\x04");
+  }
+}
+
 //
 // Challenge 10: Implement CBC mode.
+// https://cryptopals.com/sets/2/challenges/10
 //
 /// Decrypts AES-128-CBC just using ECB mode as primitive.
 pub fn decrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>, Box<Error>> {
@@ -108,106 +121,133 @@ pub fn encrypt_aes_128_cbc(data: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>
   Ok(buf)
 }
 
+mod challenge10 {
+  #[test]
+  fn test() {
+    let data = crate::read_base64("input/10");
+    let key = b"YELLOW SUBMARINE";
+    let iv = vec![0; 16];
+    let res = super::decrypt_aes_128_cbc(&data, key, &iv).unwrap();
+    assert_eq!(
+      String::from_utf8_lossy(&res).lines().last().unwrap(),
+      "Play that funky music "
+    );
+    assert_eq!(res.len(), 2876);
+    let newdata = super::encrypt_aes_128_cbc(&res, key, &iv).unwrap();
+    assert_eq!(newdata, data);
+  }
+}
+
 //
 // Challenge 11: An ECB/CBC detection oracle.
+// https://cryptopals.com/sets/2/challenges/11
 //
-type RandomEnc = fn(&[u8]) -> Result<Ciphertext, Box<Error>>;
+use self::challenge11::*;
 
-pub struct Ciphertext {
-  cipher: Cipher,
-  ciphertext: Vec<u8>,
-}
-
-pub struct OracleGuess {
-  pub actual: Cipher,
-  pub guessed: Cipher,
-}
-
-// Guesses if an oracle encrypted in ECB or CBC mode.
-// Returns a tuple (guessed_cipher, actual_cipher) so that
-// accuracy can be verified.
-pub fn discern_ecb_cbc(oracle: Option<RandomEnc>) -> OracleGuess {
+/// Guesses if a ciphertext is encrypted in ECB or CBC mode.
+pub fn discern_ecb_cbc() -> OracleGuess {
   let input = "A".repeat(1024); // ¯\_(ツ)_/¯
-  let oracle = oracle.unwrap_or(aes_random_enc);
-  let result = oracle(input.as_bytes()).unwrap();
+  let mut result = aes_random_enc(input.as_bytes()).unwrap();
   let count = crate::set1::max_repeat_count(&result.ciphertext, 16);
 
   if count >= 10 {
-    OracleGuess {
-      actual: result.cipher,
-      guessed: Cipher::aes_128_ecb(),
-    }
+    result.guess = Some(Cipher::aes_128_ecb());
   } else {
-    OracleGuess {
-      actual: result.cipher,
-      guessed: Cipher::aes_128_cbc(),
-    }
+    result.guess = Some(Cipher::aes_128_cbc());
   }
+
+  result
 }
 
-// This function generates a random key, and encrypts data with it. Half
-// of the time it will use AES-128-ECB, the other half AES-128-CBC. It's
-// the “encryption oracle” from the challenge writeup.
-//
-// Returns the ciphertext _and_ the used cipher:
-fn aes_random_enc(plaintext: &[u8]) -> Result<Ciphertext, Box<Error>> {
-  // (1) Generate a random key and encrypt under it.
-  let mut rng = rand::thread_rng();
-  let key = random::<[u8; 16]>();
+mod challenge11 {
+  use openssl::symm::{Cipher, Crypter, Mode};
+  use rand::{random, Rng};
+  use std::error::Error;
 
-  // (2) Have the function choose to encrypt under ECB 1/2 the time, and under
-  //     CBC the other half.
-  let cipher;
-  let iv_arr;
-  let iv: Option<&[u8]>; // Specify type to easily coerce array to slice below.
-
-  if rng.gen() {
-    iv = None;
-    cipher = Cipher::aes_128_ecb();
-  } else {
-    cipher = Cipher::aes_128_cbc();
-    iv_arr = random::<[u8; 16]>();
-    iv = Some(&iv_arr);
+  pub struct OracleGuess {
+    actual: Cipher,
+    pub ciphertext: Vec<u8>,
+    pub guess: Option<Cipher>,
   }
 
-  // (3) Have the function append 5-10 bytes (count chosen randomly)
-  // before the plaintext and 5-10 bytes after the plaintext.
-  let n = rng.gen_range(5, 11);
-  let m = rng.gen_range(5, 11);
-  let mid = n + plaintext.len();
-  let mut data = Vec::with_capacity(mid + m);
+  // This function generates a random key, and encrypts data with it. Half
+  // of the time it will use AES-128-ECB, the other half AES-128-CBC. It's
+  // the “encryption oracle” from the challenge writeup.
+  //
+  // Returns the ciphertext _and_ the used cipher:
+  pub fn aes_random_enc(plaintext: &[u8]) -> Result<OracleGuess, Box<Error>> {
+    // (1) Generate a random key and encrypt under it.
+    let mut rng = rand::thread_rng();
+    let key = random::<[u8; 16]>();
 
-  // (3a) Add the ‘n’ preamble bytes.
-  data.resize(n, 0);
-  rng.fill(&mut data[..]);
+    // (2) Have the function choose to encrypt under ECB 1/2 the time, and under
+    //     CBC the other half.
+    let cipher;
+    let iv_arr;
+    let iv: Option<&[u8]>; // Specify type to easily coerce array to slice below.
 
-  // (3b) Add the actual plaintext.
-  data.extend_from_slice(plaintext);
-  assert_eq!(data.len(), mid);
+    if rng.gen() {
+      iv = None;
+      cipher = Cipher::aes_128_ecb();
+    } else {
+      cipher = Cipher::aes_128_cbc();
+      iv_arr = random::<[u8; 16]>();
+      iv = Some(&iv_arr);
+    }
 
-  // (3c) Add the ‘m’ postamble bytes.
-  data.resize(mid + m, 0);
-  rng.fill(&mut data[mid..]);
+    // (3) Have the function append 5-10 bytes (count chosen randomly)
+    // before the plaintext and 5-10 bytes after the plaintext.
+    let n = rng.gen_range(5, 11);
+    let m = rng.gen_range(5, 11);
+    let mid = n + plaintext.len();
+    let mut data = Vec::with_capacity(mid + m);
 
-  // (4) Profit.
-  let mut n = 0;
-  let mut buf = vec![0; data.len() + cipher.block_size()];
-  let mut crypt = Crypter::new(cipher, Mode::Encrypt, &key, iv)?;
+    // (3a) Add the ‘n’ preamble bytes.
+    data.resize(n, 0);
+    rng.fill(&mut data[..]);
 
-  n += crypt.update(&data, &mut buf)?;
-  n += crypt.finalize(&mut buf[n..])?;
+    // (3b) Add the actual plaintext.
+    data.extend_from_slice(plaintext);
+    assert_eq!(data.len(), mid);
 
-  buf.truncate(n);
+    // (3c) Add the ‘m’ postamble bytes.
+    data.resize(mid + m, 0);
+    rng.fill(&mut data[mid..]);
 
-  Ok(Ciphertext {
-    cipher,
-    ciphertext: buf,
-  })
+    // (4) Profit.
+    let mut n = 0;
+    let mut buf = vec![0; data.len() + cipher.block_size()];
+    let mut crypt = Crypter::new(cipher, Mode::Encrypt, &key, iv)?;
+
+    n += crypt.update(&data, &mut buf)?;
+    n += crypt.finalize(&mut buf[n..])?;
+
+    buf.truncate(n);
+
+    Ok(OracleGuess {
+      guess: None,
+      actual: cipher,
+      ciphertext: buf,
+    })
+  }
+
+  #[test]
+  fn test() {
+    for _ in 0..10 {
+      let result = super::discern_ecb_cbc();
+      if result.actual != result.guess.unwrap() {
+        assert!(false, "discern_ecb_cbc() failed");
+      }
+    }
+  }
 }
 
 //
 // Challenge 12: Byte-at-a-time ECB decryption (Simple).
+// https://cryptopals.com/sets/2/challenges/12
 //
+use self::challenge12::Oracle;
+
 pub fn break_ecb_simple(oracle: &impl Oracle) -> Vec<u8> {
   // (1) Discover the block size of the cipher. (You know it,
   // but do this step anyway.)
@@ -285,9 +325,74 @@ fn oracle_block_size(oracle: &impl Oracle) -> usize {
   }
 }
 
+mod challenge12 {
+  use crate::BASE64_NL;
+  use indoc::indoc;
+  use openssl::symm::{Cipher, Crypter, Mode};
+  use std::error::Error;
+
+  pub struct AesOracle {
+    key: Vec<u8>,
+    plaintext: Vec<u8>,
+  }
+
+  pub trait Oracle {
+    fn encrypt_with_controlled(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>>;
+  }
+
+  impl AesOracle {
+    pub fn new(plaintext: &[u8]) -> AesOracle {
+      let key = rand::random::<[u8; 16]>();
+      AesOracle {
+        key: key.to_vec(),
+        plaintext: plaintext.to_vec(),
+      }
+    }
+  }
+
+  impl Oracle for AesOracle {
+    fn encrypt_with_controlled(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>> {
+      let cipher = Cipher::aes_128_ecb();
+      let mut crypt = Crypter::new(cipher, Mode::Encrypt, &self.key, None)?;
+
+      let datalen = prefix.len() + self.plaintext.len();
+      let mut n = 0;
+      let mut buf = vec![0; datalen + cipher.block_size()];
+
+      n += crypt.update(&prefix, &mut buf)?;
+      n += crypt.update(&self.plaintext, &mut buf[n..])?;
+      n += crypt.finalize(&mut buf[n..])?;
+
+      assert!(n <= buf.len());
+      assert!(n - datalen <= 16);
+
+      buf.truncate(n);
+      Ok(buf)
+    }
+  }
+
+  #[test]
+  fn test() {
+    let plaintext = BASE64_NL
+      .decode(indoc!(
+        b"
+              Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg
+              aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq
+              dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg
+              YnkK"
+      ))
+      .unwrap();
+    let oracle = AesOracle::new(&plaintext);
+    assert_eq!(super::break_ecb_simple(&oracle), plaintext);
+  }
+}
+
 //
 // Challenge 13: ECB cut-and-paste.
+// https://cryptopals.com/sets/2/challenges/13
 //
+use self::challenge13::EcbAuth;
+
 /// Returns a ciphertext that includes ‘role=admin’.
 pub fn break_ecb_auth(auth: &EcbAuth) -> Vec<u8> {
   let block_size = 16;
@@ -341,9 +446,58 @@ pub fn break_ecb_auth(auth: &EcbAuth) -> Vec<u8> {
   prefix
 }
 
+mod challenge13 {
+  pub struct EcbAuth {
+    key: Vec<u8>,
+  }
+
+  impl EcbAuth {
+    pub fn new() -> EcbAuth {
+      let key = rand::random::<[u8; 16]>();
+      EcbAuth { key: key.to_vec() }
+    }
+
+    /// Takes an address, returns the encrypted profile.
+    pub fn profile_for(&self, email: &str) -> Vec<u8> {
+      let email = email.replace('&', "").replace('=', "");
+      let query = format!("email={}&uid=10&role=user", email);
+
+      crate::set1::encrypt_aes_128_ecb(query.as_bytes(), &self.key).unwrap()
+    }
+
+    /// Takes an encrypted profile, searches for role=admin.
+    pub fn is_role_admin(&self, ciphertext: &[u8]) -> bool {
+      let bytes = crate::set1::decrypt_aes_128_ecb(ciphertext, &self.key).unwrap();
+      let query = String::from_utf8_lossy(&bytes);
+
+      for param in query.split('&') {
+        if let Some(pos) = param.find('=') {
+          let key = &param[..pos];
+          let val = &param[pos + 1..];
+          if key == "role" && val == "admin" {
+            return true;
+          }
+        }
+      }
+      false
+    }
+  }
+
+  #[test]
+  fn test() {
+    let auth = EcbAuth::new();
+    let jane = auth.profile_for("jane@hackers.com");
+    assert!(!auth.is_role_admin(&jane));
+    assert!(auth.is_role_admin(&super::break_ecb_auth(&auth)));
+  }
+}
+
 //
 // Challenge 14: Byte-at-a-time ECB decryption (Harder).
+// https://cryptopals.com/sets/2/challenges/14
 //
+use self::challenge14::RndAesOracle;
+
 pub fn break_ecb_hard(oracle: &RndAesOracle) -> Vec<u8> {
   // We can use break_ecb_simple() if we wrap RndAesOracle with a
   // wrapper that strips the prepended random bytes in every call
@@ -428,8 +582,75 @@ pub fn oracle_poison_len(oracle: &impl Oracle, bsize: usize) -> Option<usize> {
   None
 }
 
+mod challenge14 {
+  use super::challenge12::{AesOracle, Oracle};
+
+  use crate::BASE64_NL;
+  use indoc::indoc;
+  use rand::Rng;
+  use std::error::Error;
+
+  // Like AesOracle, but prepends some random bytes to the controlled part.
+  pub struct RndAesOracle {
+    poison: Vec<u8>,
+    oracle: AesOracle,
+  }
+
+  impl RndAesOracle {
+    pub fn new(plaintext: &[u8]) -> RndAesOracle {
+      let mut rng = rand::thread_rng();
+      RndAesOracle::with_poison_len(plaintext, rng.gen_range(3, 16))
+    }
+
+    // This constructor is for ease of testing oracle_poison_len() below.
+    fn with_poison_len(plaintext: &[u8], len: usize) -> RndAesOracle {
+      let mut rng = rand::thread_rng();
+      let mut poison = vec![0; len];
+      let oracle = AesOracle::new(plaintext);
+      rng.fill(&mut poison[..]);
+      RndAesOracle { poison, oracle }
+    }
+  }
+
+  impl Oracle for RndAesOracle {
+    fn encrypt_with_controlled(&self, prefix: &[u8]) -> Result<Vec<u8>, Box<Error>> {
+      let combined: Vec<_> = self.poison.iter().chain(prefix).cloned().collect();
+      self.oracle.encrypt_with_controlled(&combined)
+    }
+  }
+
+  #[test]
+  fn test() {
+    let plaintext = BASE64_NL
+      .decode(indoc!(
+        b"
+              Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg
+              aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq
+              dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg
+              YnkK"
+      ))
+      .unwrap();
+    let oracle = RndAesOracle::new(&plaintext);
+    assert_eq!(super::break_ecb_hard(&oracle), plaintext);
+  }
+
+  #[test]
+  #[ignore]
+  fn test_oracle_poison_len() {
+    let plaintext = vec![super::PAD_BYTE; 256];
+    for len in 0..=256 {
+      let oracle = RndAesOracle::with_poison_len(&plaintext, len);
+      assert_eq!(
+        super::oracle_poison_len(&oracle, 16).unwrap(),
+        oracle.poison.len()
+      );
+    }
+  }
+}
+
 //
 // Challenge 15: PKCS#7 padding validation.
+// https://cryptopals.com/sets/2/challenges/15
 //
 // Returns the length of PKCS#7 padding, or None if buf is not PKCS#7-padded.
 pub fn pkcs7_padding_len(buf: &[u8]) -> Option<usize> {
@@ -449,9 +670,32 @@ pub fn pkcs7_padding_len(buf: &[u8]) -> Option<usize> {
   }
 }
 
+mod challenge15 {
+  #[test]
+  fn test() {
+    assert_eq!(
+      super::pkcs7_padding_len(b"ICE ICE BABY\x04\x04\x04\x04"),
+      Some(4)
+    );
+    assert_eq!(
+      super::pkcs7_padding_len(b"ICE ICE BABY\x05\x05\x05\x05"),
+      None
+    );
+    assert_eq!(
+      super::pkcs7_padding_len(b"ICE ICE BABY\x01\x02\x03\x04"),
+      None
+    );
+    assert_eq!(super::pkcs7_padding_len(b"ICE ICE BABY\x00"), None);
+    assert_eq!(super::pkcs7_padding_len(b""), Some(0));
+  }
+}
+
 //
 // Challenge 16: CBC bitflipping attacks.
+// https://cryptopals.com/sets/2/challenges/16
 //
+use self::challenge16::CbcAuth;
+
 pub fn break_cbc_auth(cbc: &CbcAuth) -> Vec<u8> {
   // So the Crypto101 book (https://crypto101.io) only talks (§7.7)
   // about using a very long string as userdata, and then flipping
@@ -472,4 +716,53 @@ pub fn break_cbc_auth(cbc: &CbcAuth) -> Vec<u8> {
   crate::set1::xor_zip(&mut wanted, &fill.as_bytes()[..wlen]);
   crate::set1::xor_zip(&mut ciphertext[beg..end], &wanted);
   ciphertext
+}
+
+mod challenge16 {
+  // For challenge 16: encrypts userdata in a query string.
+  pub struct CbcAuth {
+    iv: Vec<u8>,
+    key: Vec<u8>,
+    prefix: &'static str,
+    suffix: &'static str,
+  }
+
+  impl CbcAuth {
+    pub fn new() -> CbcAuth {
+      let iv = rand::random::<[u8; 16]>().to_vec();
+      let key = rand::random::<[u8; 16]>().to_vec();
+      let prefix = "comment1=cooking%20MCs;userdata=";
+      let suffix = ";comment2=%20like%20a%20pound%20of%20bacon";
+      CbcAuth {
+        iv,
+        key,
+        prefix,
+        suffix,
+      }
+    }
+
+    /// Takes userdata as a strings and encrypts it with the rest of the query.
+    pub fn encrypt_userdata(&self, userdata: &str) -> Vec<u8> {
+      let data = userdata.replace(';', "%3B").replace('=', "%3D");
+      let query = format!("{}{}{}", self.prefix, data, self.suffix);
+      super::encrypt_aes_128_cbc(query.as_bytes(), &self.key, &self.iv).unwrap()
+    }
+
+    /// Takes encrypted query and checks if ‘admin’ param is true.
+    pub fn is_admin_true(&self, ciphertext: &[u8]) -> bool {
+      let bytes = super::decrypt_aes_128_cbc(ciphertext, &self.key, &self.iv).unwrap();
+      // We're not verifying that the plaintext is a valid query string. In a real
+      // world scenario, we might—making the attack unfeasible?
+      let query = String::from_utf8_lossy(&bytes);
+      query.find(";admin=true;").is_some()
+    }
+  }
+
+  #[test]
+  fn test() {
+    let cbc = CbcAuth::new();
+    let query = cbc.encrypt_userdata("hah;admin=true;bye=");
+    assert!(!cbc.is_admin_true(&query));
+    assert!(cbc.is_admin_true(&super::break_cbc_auth(&cbc)));
+  }
 }
