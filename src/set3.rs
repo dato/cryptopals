@@ -1,3 +1,6 @@
+use byteorder::{ByteOrder, LittleEndian};
+use openssl::symm::{Cipher, Crypter, Mode};
+
 use self::challenge17::*;
 use crate::set2::pkcs7_padding_len;
 
@@ -205,6 +208,79 @@ mod challenge17 {
     assert_eq!(
       super::break_padding_block(&oracle, &ciphertext, &oracle.iv()),
       plaintext
+    );
+  }
+}
+
+//
+// Challenge 18: Implement CTR, the stream cipher mode.
+// https://cryptopals.com/sets/3/challenges/18
+//
+fn aes_128_ctr(data: &[u8], key: &[u8]) -> Vec<u8> {
+  data
+    .iter()
+    .zip(CtrKeyStream::new(key, 0))
+    .map(|(a, b)| a ^ b)
+    .collect()
+}
+
+struct CtrKeyStream {
+  // Nonce given by user.
+  nonce: u64,
+  // Block counter.
+  block: u64,
+  // next() yields bytes[pos] and increments pos.
+  pos: usize,
+  bytes: Vec<u8>,
+  // Crypter and staging area for ECB encryption.
+  temp: Vec<u8>,
+  crypter: Crypter,
+}
+
+impl CtrKeyStream {
+  fn new(key: &[u8], nonce: u64) -> CtrKeyStream {
+    assert_eq!(key.len(), 16);
+    let cipher = Cipher::aes_128_ecb();
+    let mut crypter = Crypter::new(cipher, Mode::Encrypt, key, None).unwrap();
+    crypter.pad(false);
+    CtrKeyStream {
+      nonce,
+      crypter,
+      block: 0,
+      pos: 16, // 16 forces further initialization in first call to next().
+      temp: vec![0; 16],
+      bytes: vec![0; 32], // crypter.update() requires datalen + cipher.block_len().
+    }
+  }
+}
+
+impl Iterator for CtrKeyStream {
+  type Item = u8;
+
+  fn next(&mut self) -> Option<u8> {
+    if self.pos == 16 {
+      LittleEndian::write_u64(&mut self.temp[..8], self.nonce);
+      LittleEndian::write_u64(&mut self.temp[8..], self.block);
+      self.crypter.update(&self.temp, &mut self.bytes).unwrap();
+      self.pos = 0;
+      self.block += 1;
+    }
+    self.pos += 1;
+    self.bytes.get(self.pos - 1).cloned()
+  }
+}
+
+mod challenge18 {
+  use data_encoding::BASE64;
+
+  #[test]
+  fn test() {
+    let ciphertext = BASE64
+      .decode(b"L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==")
+      .unwrap();
+    assert_eq!(
+      super::aes_128_ctr(&ciphertext, b"YELLOW SUBMARINE"),
+      b"Yo, VIP Let's kick it Ice, Ice, baby Ice, Ice, baby ".to_vec()
     );
   }
 }
