@@ -70,7 +70,7 @@ pub fn break_xor_byte(data: &[u8]) -> XorResult {
 
 /// Leaves in ‘dst’ the result of `src ^ byte`.
 fn xor_byte_into(src: &[u8], byte: u8, dst: &mut [u8]) {
-  for (i, c) in src.into_iter().enumerate() {
+  for (i, c) in src.iter().enumerate() {
     dst[i] = c ^ byte;
   }
 }
@@ -123,7 +123,7 @@ fn freq_distance(data: &str, freqs: &[(char, f64)]) -> f64 {
 // Challenge 5: Implement repeating-key XOR
 //
 pub fn xor_cycle(buf: &mut [u8], key: &[u8]) {
-  for (dst, &byte) in buf.iter_mut().zip(key.into_iter().cycle()) {
+  for (dst, &byte) in buf.iter_mut().zip(key.iter().cycle()) {
     *dst ^= byte;
   }
 }
@@ -149,10 +149,7 @@ pub fn break_xor_cycle(data: &[u8]) -> Vec<u8> {
 
 /// Computes the Hamming distance.
 pub fn hamming_distance(a: &[u8], b: &[u8]) -> u32 {
-  a.into_iter()
-    .zip(b)
-    .map(|(x, y)| (x ^ y).count_ones())
-    .sum()
+  a.iter().zip(b).map(|(x, y)| (x ^ y).count_ones()).sum()
 }
 
 /// Compute the distance for a number of KEYSIZE blocks.
@@ -182,7 +179,7 @@ fn break_xor_cycle_keylen(data: &[u8], keysize: usize) -> (Vec<u8>, f64) {
   for k in 0..keysize {
     // Guess the key for all characters with the same `mod key` value.
     bytes.truncate(0);
-    bytes.extend(data.into_iter().skip(k).step_by(keysize));
+    bytes.extend(data.iter().skip(k).step_by(keysize));
     let XorResult {
       key: k,
       distance: d,
